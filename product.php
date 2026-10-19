@@ -77,102 +77,106 @@ $pageTitle = $p['product_name'];
 require __DIR__ . '/includes/header.php';
 ?>
 
-<div class="row">
-  <div class="product-image" style="height: 420px"><?php if (
-    $image
-): ?><img src="/clothing-store-backup/<?= e($image['image_path']) ?>" alt="<?= e(
-    $image['alt_text'] ?? $p['product_name'],
-) ?>" /><?php else: ?>Product image<?php endif; ?></div>
-  <section>
-    <div class="eyebrow"><?= e(
-    $p['category_name'],
-) ?></div>
-    <h1 class="page-title"><?= e(
-    $p['product_name'],
-) ?></h1>
-    <p class="price">₱<?= number_format((float) $p['base_price'], 2) ?></p>
-    <p><?= nl2br(
-    e($p['description'] ?? ''),
-) ?></p>
+<div class="pdp">
+  <div class="gallery">
+    <div class="product-image">
+      <?php if ($image): ?>
+      <img
+        data-main-img
+        src="<?= APP_BASE . '/' . e($image['image_path']) ?>"
+        alt="<?= e($image['alt_text'] ?? $p['product_name']) ?>"
+      />
+      <?php else: ?>
+      Product image
+      <?php endif; ?>
+    </div>
+    <?php if (count($images) > 1): ?>
+    <div class="thumbs" aria-label="Product photos">
+      <?php foreach ($images as $index => $galleryImage): ?>
+      <button
+        type="button"
+        data-thumb="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
+        aria-current="<?= $index === 0 ? 'true' : 'false' ?>"
+        aria-label="Show photo <?= $index + 1 ?>"
+      >
+        <img
+          src="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
+          alt=""
+        />
+      </button>
+      <?php endforeach; ?>
+    </div>
+    <?php endif; ?>
+  </div>
+  <section class="pdp-info">
+    <div class="eyebrow"><?= e($p['category_name']) ?></div>
+    <h1 class="page-title"><?= e($p['product_name']) ?></h1>
+    <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
+    <p><?= nl2br(e($p['description'] ?? '')) ?></p>
     <?php if ($variants): ?>
-
     <form method="post">
-      <input type="hidden" name="csrf" value="<?= e(
-    csrf_token(),
-) ?>" /><label>Size and color</label
-      ><select name="variant_id">
+      <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+      <label>Size and color</label>
+      <select name="variant_id">
         <option value="">Select option</option>
-        <?php foreach (
-    $variants
-    as $x
-): ?>
-
-        <option value="<?= (int) $x['variant_id'] ?>" <?= $x['stock_quantity'] < 1
-    ? 'disabled'
-    : '' ?>><?= e(
-    ($x['size_name'] ?? 'One size') . ' / ' . ($x['color_name'] ?? 'Default'),
-) ?> - <?= (int) $x[
-     'stock_quantity'
- ] ?> in stock</option>
-        <?php endforeach; ?></select
-      ><label>Quantity</label><input type="number" name="quantity" min="1" value="1" max="99" /><button>Add to cart</button>
+        <?php foreach ($variants as $x): ?>
+        <option
+          value="<?= (int) $x['variant_id'] ?>"
+          <?= $x['stock_quantity'] < 1 ? 'disabled' : '' ?>
+        >
+          <?= e(
+              ($x['size_name'] ?? 'One size') .
+                  ' / ' .
+                  ($x['color_name'] ?? 'Default'),
+          ) ?> - <?= (int) $x['stock_quantity'] ?> in stock
+        </option>
+        <?php endforeach; ?>
+      </select>
+      <label>Quantity</label>
+      <input type="number" name="quantity" min="1" value="1" max="99" />
+      <button style="width: 100%; margin-top: 20px">Add to cart</button>
     </form>
     <?php else: ?>
-
     <p class="muted">Options are currently unavailable.</p>
     <?php endif; ?>
-
   </section>
 </div>
 <section id="reviews">
   <h2>Customer reviews</h2>
-  <?php
-if ($reviewError): ?>
-
+  <?php if ($reviewError): ?>
   <div class="notice error"><?= e($reviewError) ?></div>
-  <?php endif;
-foreach (
-    $images
-    as $img
-): ?><img style="width: 110px; height: 110px; object-fit: cover; margin: 6px" src="<?= APP_BASE .
-    '/' .
-    e($img['image_path']) ?>" alt="<?= e(
-    $img['alt_text'] ?? $p['product_name'],
-) ?>" /><?php endforeach;
-foreach ($reviews as $r): ?>
-
-  <article class="card">
-    <b><?= e(
-    $r['first_name'] . ' ' . $r['last_name'],
-) ?></b> · <?= str_repeat('★', (int) $r['rating']) ?>
-
-    <p><?= nl2br(
-    e($r['review_text']),
-) ?></p>
+  <?php endif; ?>
+  <?php if (!$reviews): ?>
+  <p class="muted">No reviews yet.</p>
+  <?php endif; ?>
+  <?php foreach ($reviews as $r): ?>
+  <article class="review">
+    <b><?= e($r['first_name'] . ' ' . $r['last_name']) ?></b>
+    <span class="stars" aria-label="<?= (int) $r['rating'] ?> out of 5"
+      ><?= str_repeat('★', (int) $r['rating']) ?></span
+    >
+    <p><?= nl2br(e($r['review_text'])) ?></p>
     <small><?= e($r['created_at']) ?></small>
   </article>
-  <?php endforeach;
-if (
-    current_user()
-): ?>
-
-  <form class="form-card" method="post">
-    <input type="hidden" name="csrf" value="<?= e(
-    csrf_token(),
-) ?>" /><input type="hidden" name="action" value="review" /><label>Rating (1-5)</label
-    ><select name="rating">
+  <?php endforeach; ?>
+  <?php if (current_user()): ?>
+  <form class="form-card" style="margin-left: 0" method="post">
+    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+    <input type="hidden" name="action" value="review" />
+    <label>Rating (1-5)</label>
+    <select name="rating">
       <option value="5">5 - Excellent</option>
       <option value="4">4 - Good</option>
       <option value="3">3 - Average</option>
       <option value="2">2 - Poor</option>
-      <option value="1">1 - Bad</option></select
-    ><label>Your review</label><textarea name="review_text"></textarea><button>Submit / update review</button>
+      <option value="1">1 - Bad</option>
+    </select>
+    <label>Your review</label>
+    <textarea name="review_text"></textarea>
+    <button>Submit / update review</button>
   </form>
   <?php else: ?>
-
   <p><a href="<?= APP_BASE ?>/user/login.php">Sign in</a> to review a product you purchased.</p>
-  <?php endif;
-?>
-
+  <?php endif; ?>
 </section>
 <?php require __DIR__ . '/includes/footer.php'; ?>
