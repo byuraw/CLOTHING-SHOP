@@ -1,10 +1,66 @@
 <?php
-require_once __DIR__.'/includes/functions.php';
-$term=trim($_GET['q']??''); $category=(int)($_GET['category']??0);
-$sql="SELECT p.product_id,p.product_name,p.base_price,pi.image_path,c.category_name FROM products p JOIN categories c ON c.category_id=p.category_id LEFT JOIN product_images pi ON pi.product_id=p.product_id AND pi.sort_order=0 WHERE p.is_active=1";
-$args=[]; if($term!==''){$sql.=" AND (p.product_name LIKE ? OR p.description LIKE ?)";$args[]="%$term%";$args[]="%$term%";} if($category){$sql.=" AND p.category_id=?";$args[]=$category;} $sql.=" ORDER BY p.created_at DESC";
-$s=$pdo->prepare($sql);$s->execute($args);$products=$s->fetchAll();$categories=$pdo->query("SELECT category_id,category_name FROM categories WHERE is_active=1 ORDER BY category_name")->fetchAll();
-$pageTitle='Shop';require __DIR__.'/includes/header.php';?>
-<div class="section-head"><h1 class="page-title">Shop</h1></div><form method="get" class="row"><input name="q" value="<?=e($term)?>" placeholder="Search clothing"><select name="category"><option value="0">All categories</option><?php foreach($categories as $c):?><option value="<?=(int)$c['category_id']?>" <?=$category===(int)$c['category_id']?'selected':''?>><?=e($c['category_name'])?></option><?php endforeach;?></select><button>Filter</button></form>
-<div class="grid"><?php foreach($products as $p):?><article class="card"><a href="/clothing-store-backup/product.php?id=<?=(int)$p['product_id']?>"><div class="product-image"><?php if($p['image_path']):?><img src="/clothing-store-backup/<?=e($p['image_path'])?>" alt=""><?php else:?>Product image<?php endif;?></div><span class="muted"><?=e($p['category_name'])?></span><h3><?=e($p['product_name'])?></h3></a><div class="price">₱<?=number_format((float)$p['base_price'],2)?></div></article><?php endforeach;?></div>
-<?php if(!$products):?><div class="empty">No products found. Try another search.</div><?php endif;require __DIR__.'/includes/footer.php';?>
+require_once __DIR__ . '/includes/functions.php';
+$term = trim($_GET['q'] ?? '');
+$category = (int) ($_GET['category'] ?? 0);
+$sql =
+    'SELECT p.product_id, p.product_name, p.base_price, pi.image_path, c.category_name FROM products p JOIN categories c ON c.category_id = p.category_id LEFT JOIN product_images pi ON pi.product_id = p.product_id AND pi.sort_order = 0 WHERE p.is_active = 1';
+$args = [];
+if ($term !== '') {
+    $sql .= ' AND (p.product_name LIKE ? OR p.description LIKE ?)';
+    $args[] = "%$term%";
+    $args[] = "%$term%";
+}
+if ($category) {
+    $sql .= ' AND p.category_id = ?';
+    $args[] = $category;
+}
+$sql .= ' ORDER BY p.created_at DESC';
+$s = $pdo->prepare($sql);
+$s->execute($args);
+$products = $s->fetchAll();
+$categories = $pdo
+    ->query(
+        'SELECT category_id, category_name FROM categories WHERE is_active = 1 ORDER BY category_name',
+    )
+    ->fetchAll();
+$pageTitle = 'Shop';
+require __DIR__ . '/includes/header.php';
+?>
+
+<div class="section-head"><h1 class="page-title">Shop</h1></div>
+<form method="get" class="row">
+  <input name="q" value="<?= e($term) ?>" placeholder="Search clothing" />
+  <select name="category">
+    <option value="0">All categories</option>
+    <?php foreach ($categories as $c): ?>
+
+    <option value="<?= (int) $c['category_id'] ?>" <?= $category === (int) $c['category_id']
+    ? 'selected'
+    : '' ?>><?= e($c['category_name']) ?></option>
+    <?php endforeach; ?>
+
+  </select>
+  <button>Filter</button>
+</form>
+<div class="grid">
+  <?php foreach ($products as $p): ?>
+
+  <article class="card">
+    <a href="<?= APP_BASE . '/product.php?id=' . (int) $p['product_id'] ?>">
+      <div class="product-image"><?php if ($p['image_path']): ?>
+ <img src="<?= APP_BASE . '/' . e($p['image_path']) ?>" alt="" /> <?php else: ?>
+ Product image <?php endif; ?>
+</div>
+      <span class="muted"><?= e($p['category_name']) ?></span>
+      <h3><?= e($p['product_name']) ?></h3>
+    </a>
+    <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
+  </article>
+  <?php endforeach; ?>
+
+</div>
+<?php if (!$products): ?>
+
+<div class="empty">No products found. Try another search.</div>
+<?php endif; ?>
+<?php require __DIR__ . '/includes/footer.php'; ?>

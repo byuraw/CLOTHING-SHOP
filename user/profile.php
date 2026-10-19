@@ -1,10 +1,81 @@
 <?php
-require_once __DIR__.'/../includes/functions.php'; require_login(); $error='';
-$q=$pdo->prepare('SELECT first_name,last_name,email,phone,profile_photo FROM users WHERE user_id=?');$q->execute([current_user()['id']]);$profile=$q->fetch();
-if($_SERVER['REQUEST_METHOD']==='POST'){csrf_check();$first=trim($_POST['first_name']??'');$last=trim($_POST['last_name']??'');$phone=trim($_POST['phone']??'');$email=strtolower(trim($_POST['email']??''));
- if($first===''||$last===''||!filter_var($email,FILTER_VALIDATE_EMAIL))$error='Enter a first name, last name, and valid email.';
- else {try{$photo=upload_image($_FILES['profile_photo']??[],'profiles');$sql='UPDATE users SET first_name=?,last_name=?,email=?,phone=?'.($photo?',profile_photo=?':'').' WHERE user_id=?';$st=$pdo->prepare($sql);$args=[$first,$last,$email,$phone?:null];if($photo)$args[]=$photo;$args[]=current_user()['id'];$st->execute($args);$_SESSION['user']['name']=$first;$_SESSION['user']['email']=$email;flash('Profile updated.');redirect(APP_BASE.'/user/profile.php');}catch(Throwable $ex){$error=$ex instanceof RuntimeException?$ex->getMessage():'Could not update profile. The email may already be in use.';}}
+require_once __DIR__ . '/../includes/functions.php';
+require_login();
+$error = '';
+$q = $pdo->prepare(
+    'SELECT first_name,last_name,email,phone,profile_photo FROM users WHERE user_id=?',
+);
+$q->execute([current_user()['id']]);
+$profile = $q->fetch();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    csrf_check();
+    $first = trim($_POST['first_name'] ?? '');
+    $last = trim($_POST['last_name'] ?? '');
+    $phone = trim($_POST['phone'] ?? '');
+    $email = strtolower(trim($_POST['email'] ?? ''));
+    if ($first === '' || $last === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = 'Enter a first name, last name, and valid email.';
+    } else {
+        try {
+            $photo = upload_image($_FILES['profile_photo'] ?? [], 'profiles');
+            $sql =
+                'UPDATE users SET first_name=?,last_name=?,email=?,phone=?' .
+                ($photo ? ',profile_photo=?' : '') .
+                ' WHERE user_id=?';
+            $st = $pdo->prepare($sql);
+            $args = [$first, $last, $email, $phone ?: null];
+            if ($photo) {
+                $args[] = $photo;
+            }
+            $args[] = current_user()['id'];
+            $st->execute($args);
+            $_SESSION['user']['name'] = $first;
+            $_SESSION['user']['email'] = $email;
+            flash('Profile updated.');
+            redirect(APP_BASE . '/user/profile.php');
+        } catch (Throwable $ex) {
+            $error =
+                $ex instanceof RuntimeException
+                    ? $ex->getMessage()
+                    : 'Could not update profile. The email may already be in use.';
+        }
+    }
 }
-$pageTitle='My profile';require __DIR__.'/../includes/header.php';?>
-<h1 class="page-title">My profile</h1><?php if($error):?><div class="notice error"><?=e($error)?></div><?php endif;?>
-<form class="form-card" method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?=e(csrf_token())?>"><label>First name</label><input name="first_name" value="<?=e($profile['first_name'])?>"><label>Last name</label><input name="last_name" value="<?=e($profile['last_name'])?>"><label>Email</label><input name="email" value="<?=e($profile['email'])?>"><label>Phone</label><input name="phone" value="<?=e($profile['phone']??'')?>"><label>Profile photo (JPG, PNG, WEBP, GIF; max 5 MB)</label><input type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif"><?php if($profile['profile_photo']):?><p><img style="max-width:140px;border-radius:50%" src="<?=APP_BASE.'/'.e($profile['profile_photo'])?>" alt="Profile photo"></p><?php endif;?><button>Save profile</button></form><p><a class="button secondary" href="<?=APP_BASE?>/user/addresses.php">Manage addresses</a> <a class="button secondary" href="<?=APP_BASE?>/orders.php">View order history</a></p><?php require __DIR__.'/../includes/footer.php';?>
+$pageTitle = 'My profile';
+require __DIR__ . '/../includes/header.php';
+?>
+
+<h1 class="page-title">My profile</h1>
+<?php if ($error): ?>
+<div class="notice error"><?= e(
+    $error,
+) ?></div>
+<?php endif; ?>
+
+<form class="form-card" method="post" enctype="multipart/form-data">
+  <input type="hidden" name="csrf" value="<?= e(
+    csrf_token(),
+) ?>" /><label>First name</label><input name="first_name" value="<?= e(
+    $profile['first_name'],
+) ?>" /><label>Last name</label
+  ><input name="last_name" value="<?= e(
+    $profile['last_name'],
+) ?>" /><label>Email</label><input name="email" value="<?= e(
+    $profile['email'],
+) ?>" /><label>Phone</label><input name="phone" value="<?= e(
+    $profile['phone'] ?? '',
+) ?>" /><label
+    >Profile photo (JPG, PNG, WEBP, GIF; max 5 MB)</label
+  ><input type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif" /><?php if (
+    $profile['profile_photo']
+): ?>
+  <p><img style="max-width: 140px; border-radius: 50%" src="<?= APP_BASE .
+    '/' .
+    e(
+        $profile['profile_photo'],
+    ) ?>" alt="Profile photo" /></p>
+  <?php endif; ?><button>Save profile</button>
+</form>
+<p><a class="button secondary" href="<?= APP_BASE ?>/user/addresses.php">Manage addresses</a> <a class="button secondary" href="<?= APP_BASE ?>/orders.php">View order history</a></p>
+<?php require __DIR__ .
+    '/../includes/footer.php'; ?>

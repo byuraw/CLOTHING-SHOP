@@ -1,12 +1,89 @@
 <?php
-function send_order_status_email(PDO $pdo,int $orderId): void {
- $cfg=require __DIR__.'/../config/mail.php'; if($cfg['username']===''||!is_file(__DIR__.'/../vendor/autoload.php')) { error_log('Mailtrap not configured or Composer dependencies missing; order email skipped.'); return; }
- require_once __DIR__.'/../vendor/autoload.php';
- $q=$pdo->prepare('SELECT o.order_number,o.subtotal,o.shipping_fee,o.total_amount,o.placed_at,u.email,u.first_name,os.status_name FROM orders o JOIN users u ON u.user_id=o.user_id JOIN order_statuses os ON os.order_status_id=o.order_status_id WHERE o.order_id=?');$q->execute([$orderId]);$o=$q->fetch();if(!$o)return;
- $it=$pdo->prepare('SELECT product_name_snapshot,quantity,unit_price,line_total FROM order_items WHERE order_id=?');$it->execute([$orderId]);$items=$it->fetchAll();
- $html='<h2>Order '.htmlspecialchars($o['order_number']).'</h2><p>Hello '.htmlspecialchars($o['first_name']).', your order status is <b>'.htmlspecialchars($o['status_name']).'</b>.</p><table border="1" cellpadding="6"><tr><th>Product</th><th>Qty</th><th>Unit price</th><th>Subtotal</th></tr>';
- foreach($items as $i){$html.='<tr><td>'.htmlspecialchars($i['product_name_snapshot']).'</td><td>'.(int)$i['quantity'].'</td><td>₱'.number_format((float)$i['unit_price'],2).'</td><td>₱'.number_format((float)$i['line_total'],2).'</td></tr>';}$html.='</table><p>Subtotal: ₱'.number_format((float)$o['subtotal'],2).'<br>Shipping: ₱'.number_format((float)$o['shipping_fee'],2).'<br><b>Grand total: ₱'.number_format((float)$o['total_amount'],2).'</b></p>';
- $pdfHtml='<h1>Wearwell Clothing Receipt</h1><p>Order: '.htmlspecialchars($o['order_number']).'<br>Status: '.htmlspecialchars($o['status_name']).'<br>Date: '.htmlspecialchars($o['placed_at']).'</p>'.$html;
- $dompdf=new \Dompdf\Dompdf();$dompdf->loadHtml($pdfHtml,'UTF-8');$dompdf->setPaper('A4');$dompdf->render();$pdf=$dompdf->output();
- $mail=new \PHPMailer\PHPMailer\PHPMailer(true);$mail->isSMTP();$mail->Host=$cfg['host'];$mail->SMTPAuth=true;$mail->Username=$cfg['username'];$mail->Password=$cfg['password'];$mail->Port=$cfg['port'];$mail->SMTPSecure=\PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;$mail->setFrom($cfg['from_email'],$cfg['from_name']);$mail->addAddress($o['email'],$o['first_name']);$mail->isHTML(true);$mail->Subject='Order '.$o['order_number'].' status: '.$o['status_name'];$mail->Body=$html;$mail->AltBody=strip_tags(str_replace(['</td>','</tr>','<br>'],[' | ','\n','\n'],$html));$mail->addStringAttachment($pdf,'receipt-'.$o['order_number'].'.pdf','base64','application/pdf');$mail->send();
+
+function send_order_status_email(PDO $pdo, int $orderId): void
+{
+    $cfg = require __DIR__ . '/../config/mail.php';
+    if ($cfg['username'] === '' || !is_file(__DIR__ . '/../vendor/autoload.php')) {
+        error_log('Mailtrap not configured or Composer dependencies missing; order email skipped.');
+        return;
+    }
+    require_once __DIR__ . '/../vendor/autoload.php';
+    $q = $pdo->prepare(
+        'SELECT o.order_number,o.subtotal,o.shipping_fee,o.total_amount,o.placed_at,u.email,u.first_name,os.status_name FROM orders o JOIN users u ON u.user_id=o.user_id JOIN order_statuses os ON os.order_status_id=o.order_status_id WHERE o.order_id=?',
+    );
+    $q->execute([$orderId]);
+    $o = $q->fetch();
+    if (!$o) {
+        return;
+    }
+    $it = $pdo->prepare(
+        'SELECT product_name_snapshot,quantity,unit_price,line_total FROM order_items WHERE order_id=?',
+    );
+    $it->execute([$orderId]);
+    $items = $it->fetchAll();
+    $html =
+        '<h2>Order ' .
+        htmlspecialchars($o['order_number']) .
+        '</h2><p>Hello ' .
+        htmlspecialchars($o['first_name']) .
+        ', your order status is <b>' .
+        htmlspecialchars($o['status_name']) .
+        '</b>.</p><table border="1" cellpadding="6"><tr><th>Product</th><th>Qty</th><th>Unit price</th><th>Subtotal</th></tr>';
+    foreach ($items as $i) {
+        $html .=
+            '<tr><td>' .
+            htmlspecialchars($i['product_name_snapshot']) .
+            '</td><td>' .
+            (int) $i['quantity'] .
+            '</td><td>₱' .
+            number_format((float) $i['unit_price'], 2) .
+            '</td><td>₱' .
+            number_format((float) $i['line_total'], 2) .
+            '</td></tr>';
+    }
+    $html .=
+        '</table><p>Subtotal: ₱' .
+        number_format((float) $o['subtotal'], 2) .
+        '<br>Shipping: ₱' .
+        number_format((float) $o['shipping_fee'], 2) .
+        '<br><b>Grand total: ₱' .
+        number_format((float) $o['total_amount'], 2) .
+        '</b></p>';
+    $pdfHtml =
+        '<h1>Wearwell Clothing Receipt</h1><p>Order: ' .
+        htmlspecialchars($o['order_number']) .
+        '<br>Status: ' .
+        htmlspecialchars($o['status_name']) .
+        '<br>Date: ' .
+        htmlspecialchars($o['placed_at']) .
+        '</p>' .
+        $html;
+    $dompdf = new \Dompdf\Dompdf();
+    $dompdf->loadHtml($pdfHtml, 'UTF-8');
+    $dompdf->setPaper('A4');
+    $dompdf->render();
+    $pdf = $dompdf->output();
+    $mail = new \PHPMailer\PHPMailer\PHPMailer(true);
+    $mail->isSMTP();
+    $mail->Host = $cfg['host'];
+    $mail->SMTPAuth = true;
+    $mail->Username = $cfg['username'];
+    $mail->Password = $cfg['password'];
+    $mail->Port = $cfg['port'];
+    $mail->SMTPSecure = \PHPMailer\PHPMailer\PHPMailer::ENCRYPTION_STARTTLS;
+    $mail->setFrom($cfg['from_email'], $cfg['from_name']);
+    $mail->addAddress($o['email'], $o['first_name']);
+    $mail->isHTML(true);
+    $mail->Subject = 'Order ' . $o['order_number'] . ' status: ' . $o['status_name'];
+    $mail->Body = $html;
+    $mail->AltBody = strip_tags(
+        str_replace(['</td>', '</tr>', '<br>'], [' | ', '\n', '\n'], $html),
+    );
+    $mail->addStringAttachment(
+        $pdf,
+        'receipt-' . $o['order_number'] . '.pdf',
+        'base64',
+        'application/pdf',
+    );
+    $mail->send();
 }

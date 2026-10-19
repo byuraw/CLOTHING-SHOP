@@ -1,8 +1,9 @@
 <?php
+
 declare(strict_types=1);
 
 /* PDO connection for clothing_store_backup. Optional overrides:
-   CLOTHING_DB_HOST, CLOTHING_DB_NAME, CLOTHING_DB_USER, CLOTHING_DB_PASS. */
+ CLOTHING_DB_HOST, CLOTHING_DB_NAME, CLOTHING_DB_USER, CLOTHING_DB_PASS. */
 $host = getenv('CLOTHING_DB_HOST') ?: '127.0.0.1';
 $dbname = getenv('CLOTHING_DB_NAME') ?: 'clothing_store_fixed';
 $username = getenv('CLOTHING_DB_USER') ?: 'root';
