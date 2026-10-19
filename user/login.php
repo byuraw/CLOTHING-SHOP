@@ -7,12 +7,18 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $email = strtolower(trim($_POST['email'] ?? ''));
+
     if (!filter_var($email, FILTER_VALIDATE_EMAIL) || trim($_POST['password'] ?? '') === '') {
         $error = 'Enter a valid email and password.';
     } else {
         $q = $pdo->prepare(
-            'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,r.role_name,s.status_name FROM users u JOIN roles r ON r.role_id=u.role_id JOIN account_statuses s ON s.status_id=u.status_id WHERE u.email=?',
+            'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,r.role_name,s.status_name 
+            FROM users u 
+            JOIN roles r ON r.role_id=u.role_id 
+            JOIN account_statuses s ON s.status_id=u.status_id 
+            WHERE u.email=?',
         );
+        
         $q->execute([$email]);
         $u = $q->fetch();
         if (
