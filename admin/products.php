@@ -32,20 +32,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'product') {
             $name = trim($_POST['product_name'] ?? '');
             $cat = (int) ($_POST['category_id'] ?? 0);
-            $price = (float) ($_POST['base_price'] ?? 0);
+            $price = filter_var($_POST['base_price'] ?? null, FILTER_VALIDATE_FLOAT);
             $slug =
                 strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $name), '-')) .
                 '-' .
                 bin2hex(random_bytes(2));
-            if (!$name || !$cat || $price < 0) {
+            if (!$name || !$cat || $price === false || $price < 0) {
                 throw new RuntimeException('Enter product name, category, and valid price.');
+            }
+            $typeValue = trim((string) ($_POST['product_type_id'] ?? ''));
+            $typeId = $typeValue === ''
+                ? null
+                : filter_var($typeValue, FILTER_VALIDATE_INT);
+            if ($typeId === false || ($typeId !== null && $typeId < 1)) {
+                throw new RuntimeException('Choose a valid product type.');
+            }
+            if ($typeId !== null) {
+                $typeCheck = $pdo->prepare(
+                    'SELECT COUNT(*) FROM product_types WHERE product_type_id=? AND category_id=?',
+                );
+                $typeCheck->execute([$typeId, $cat]);
+                if (!$typeCheck->fetchColumn()) {
+                    throw new RuntimeException('Choose a product type that belongs to the selected category.');
+                }
             }
             $q = $pdo->prepare(
                 'INSERT INTO products(category_id,product_type_id,product_name,slug,description,base_price,is_active) VALUES(?,?,?,?,?,?,1)',
             );
             $q->execute([
                 $cat,
-                $_POST['product_type_id'] ?? '' ?: null,
+                $typeId,
                 $name,
                 $slug,
                 trim($_POST['description'] ?? ''),
@@ -90,9 +106,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'variant') {
             $pid = (int) ($_POST['product_id'] ?? 0);
             $sku = trim($_POST['sku'] ?? '');
-            $price = (float) ($_POST['price'] ?? 0);
+            $price = filter_var($_POST['price'] ?? null, FILTER_VALIDATE_FLOAT);
             $stock = max(0, (int) ($_POST['stock_quantity'] ?? 0));
-            if (!$pid || !$sku || $price < 0) {
+            if (!$pid || !$sku || $price === false || $price < 0) {
                 throw new RuntimeException('Select a product and enter a SKU and valid price.');
             }
             $q = $pdo->prepare(
@@ -133,7 +149,7 @@ $cats = $pdo
     )
     ->fetchAll();
 $types = $pdo
-    ->query('SELECT product_type_id,type_name FROM product_types ORDER BY type_name')
+    ->query('SELECT product_type_id,type_name,category_id FROM product_types ORDER BY type_name')
     ->fetchAll();
 $products = $pdo
     ->query('SELECT product_id,product_name FROM products WHERE is_active=1 ORDER BY product_name')
@@ -146,7 +162,7 @@ $list = $pdo
     )
     ->fetchAll();
 $pageTitle = 'Products';
-require __DIR__ . '/../includes/header.php';
+require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h1 class="page-title">Products</h1>
@@ -181,7 +197,7 @@ require __DIR__ . '/../includes/header.php';
     as $t
 ): ?>
 
-      <option value="<?= (int) $t['product_type_id'] ?>"><?= e(
+      <option value="<?= (int) $t['product_type_id'] ?>" data-category-id="<?= (int) $t['category_id'] ?>"><?= e(
     $t['type_name'],
 ) ?></option>
       <?php endforeach; ?></select
@@ -319,9 +335,29 @@ require __DIR__ . '/../includes/header.php';
         </td>
       </tr>
       <?php endforeach; ?>
+      <?php if (!$list): ?>
+      <tr><td colspan="5" class="empty-note">No products yet. Create a product above to get started.</td></tr>
+      <?php endif; ?>
 
     </tbody>
   </table>
 </div>
-<?php require __DIR__ .
-    '/../includes/footer.php'; ?>
+<script>
+(function () {
+  var category = document.querySelector('[name="category_id"]');
+  var type = document.querySelector('[name="product_type_id"]');
+  if (!category || !type) return;
+
+  function filterTypes() {
+    Array.prototype.forEach.call(type.options, function (option) {
+      var matches = !option.value || option.dataset.categoryId === category.value;
+      option.hidden = !matches;
+      if (!matches && option.selected) type.value = '';
+    });
+  }
+
+  category.addEventListener('change', filterTypes);
+  filterTypes();
+})();
+</script>
+<?php require __DIR__ . '/../includes/admin_footer.php'; ?>

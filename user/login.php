@@ -1,7 +1,11 @@
 <?php
 require_once __DIR__ . '/../includes/functions.php';
 if (current_user()) {
-    redirect('/clothing-store-backup/index.php');
+    redirect(
+        (current_user()['role'] ?? '') === 'Admin'
+            ? '/clothing-store-backup/admin/index.php'
+            : '/clothing-store-backup/index.php',
+    );
 }
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -33,7 +37,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'role' => $u['role_name'],
             ];
             flash('Welcome back, ' . $u['first_name'] . '.');
-            redirect('/clothing-store-backup/index.php');
+            redirect(
+                $u['role_name'] === 'Admin'
+                    ? '/clothing-store-backup/admin/index.php'
+                    : '/clothing-store-backup/index.php',
+            );
         }
         $error = 'Email or password is incorrect, or the account is inactive.';
     }

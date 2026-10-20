@@ -35,7 +35,7 @@ $list = $pdo
     )
     ->fetchAll();
 $pageTitle = 'Inventory';
-require __DIR__ . '/../includes/header.php';
+require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h1 class="page-title">Inventory</h1>
@@ -90,9 +90,11 @@ require __DIR__ . '/../includes/header.php';
         </td>
       </tr>
       <?php endforeach; ?>
+      <?php if (!$list): ?>
+      <tr><td colspan="4" class="empty-note">No active product variants to manage yet.</td></tr>
+      <?php endif; ?>
 
     </tbody>
   </table>
 </div>
-<?php require __DIR__ .
-    '/../includes/footer.php'; ?>
+<?php require __DIR__ . '/../includes/admin_footer.php'; ?>

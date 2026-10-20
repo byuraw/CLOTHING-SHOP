@@ -87,7 +87,7 @@ $orders = $pdo
     )
     ->fetchAll();
 $pageTitle = 'Orders';
-require __DIR__ . '/../includes/header.php';
+require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h1 class="page-title">Order management</h1>
@@ -145,9 +145,11 @@ require __DIR__ . '/../includes/header.php';
         </td>
       </tr>
       <?php endforeach; ?>
+      <?php if (!$orders): ?>
+      <tr><td colspan="5" class="empty-note">No orders have been placed yet.</td></tr>
+      <?php endif; ?>
 
     </tbody>
   </table>
 </div>
-<?php require __DIR__ .
-    '/../includes/footer.php'; ?>
+<?php require __DIR__ . '/../includes/admin_footer.php'; ?>

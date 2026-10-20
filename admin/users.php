@@ -36,8 +36,8 @@ $roles = $pdo->query('SELECT role_id,role_name FROM roles ORDER BY role_name')->
 $statuses = $pdo
     ->query('SELECT status_id,status_name FROM account_statuses ORDER BY status_name')
     ->fetchAll();
-$pageTitle = 'Users';
-require __DIR__ . '/../includes/header.php';
+$pageTitle = 'Customers';
+require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h1 class="page-title">Users</h1>
@@ -126,9 +126,11 @@ require __DIR__ . '/../includes/header.php';
         </td>
       </tr>
       <?php endforeach; ?>
+      <?php if (!$users): ?>
+      <tr><td colspan="6" class="empty-note">No customer accounts found.</td></tr>
+      <?php endif; ?>
 
     </tbody>
   </table>
 </div>
-<?php require __DIR__ .
-    '/../includes/footer.php'; ?>
+<?php require __DIR__ . '/../includes/admin_footer.php'; ?>

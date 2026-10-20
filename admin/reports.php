@@ -25,7 +25,7 @@ $q = $pdo->prepare(
 $q->execute();
 $low = $q->fetchAll();
 $pageTitle = 'Reports';
-require __DIR__ . '/../includes/header.php';
+require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h1 class="page-title">Reports</h1>
@@ -75,6 +75,9 @@ require __DIR__ . '/../includes/header.php';
 ] ?></td>
       </tr>
       <?php endforeach; ?>
+      <?php if (!$best): ?>
+      <tr><td colspan="2" class="empty-note">No sales in this date range.</td></tr>
+      <?php endif; ?>
 
     </tbody>
   </table>
@@ -103,9 +106,11 @@ require __DIR__ . '/../includes/header.php';
 ] ?></td>
       </tr>
       <?php endforeach; ?>
+      <?php if (!$low): ?>
+      <tr><td colspan="3" class="empty-note">No low-stock variants found.</td></tr>
+      <?php endif; ?>
 
     </tbody>
   </table>
 </div>
-<?php require __DIR__ .
-    '/../includes/footer.php'; ?>
+<?php require __DIR__ . '/../includes/admin_footer.php'; ?>

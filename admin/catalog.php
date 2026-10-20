@@ -38,8 +38,8 @@ $cats = $pdo
 $types = $pdo
     ->query('SELECT product_type_id,type_name FROM product_types ORDER BY type_name')
     ->fetchAll();
-$pageTitle = 'Catalog setup';
-require __DIR__ . '/../includes/header.php';
+$pageTitle = 'Catalog';
+require __DIR__ . '/../includes/admin_header.php';
 ?>
 
 <h1 class="page-title">Categories and product types</h1>
@@ -66,6 +66,7 @@ require __DIR__ . '/../includes/header.php';
     csrf_token(),
 ) ?>" /><input type="hidden" name="kind" value="type" /><label>Category</label
     ><select name="category_id">
+      <option value="">Choose a category</option>
       <?php foreach (
     $cats
     as $c
@@ -79,11 +80,19 @@ require __DIR__ . '/../includes/header.php';
   </form>
 </div>
 <h2>Current categories</h2>
+<?php if ($cats): ?>
 <p><?= e(
     implode(', ', array_column($cats, 'category_name')),
 ) ?></p>
+<?php else: ?>
+<p class="empty-note">No categories yet. Add a category to start organizing products.</p>
+<?php endif; ?>
 <h2>Current types</h2>
+<?php if ($types): ?>
 <p><?= e(
     implode(', ', array_column($types, 'type_name')),
 ) ?></p>
-<?php require __DIR__ . '/../includes/footer.php'; ?>
+<?php else: ?>
+<p class="empty-note">No product types yet.</p>
+<?php endif; ?>
+<?php require __DIR__ . '/../includes/admin_footer.php'; ?>
