@@ -6,20 +6,19 @@ if (current_user()) {
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
-    $email = strtolower(trim($_POST['email'] ?? ''));
+    $identifier = strtolower(trim($_POST['email'] ?? ''));
 
-    if (!filter_var($email, FILTER_VALIDATE_EMAIL) || trim($_POST['password'] ?? '') === '') {
-        $error = 'Enter a valid email and password.';
+    if ($identifier === '' || trim($_POST['password'] ?? '') === '') {
+        $error = 'Enter your email or username and password.';
     } else {
         $q = $pdo->prepare(
             'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,r.role_name,s.status_name 
             FROM users u 
             JOIN roles r ON r.role_id=u.role_id 
             JOIN account_statuses s ON s.status_id=u.status_id 
-            WHERE u.email=?',
+            WHERE u.email=? OR u.username=?',
         );
-        
-        $q->execute([$email]);
+        $q->execute([$identifier, $identifier]);
         $u = $q->fetch();
         if (
             $u &&
@@ -54,7 +53,7 @@ require __DIR__ . '/../includes/header.php';
 ) ?></div>
   <?php endif; ?><input type="hidden" name="csrf" value="<?= e(
     csrf_token(),
-) ?>" /><label>Email address</label><input type="text" name="email" value="<?= e(
+) ?>" /><label>Email address or username</label><input type="text" name="email" value="<?= e(
     $_POST['email'] ?? '',
 ) ?>" /><label>Password</label
   ><input type="password" name="password" /><button>Sign in</button>

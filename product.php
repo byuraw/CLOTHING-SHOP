@@ -1,45 +1,76 @@
 <?php
 require_once __DIR__ . '/includes/functions.php';
+
 $id = (int) ($_GET['id'] ?? 0);
 $s = $pdo->prepare(
-    'SELECT p.*,c.category_name FROM products p JOIN categories c ON c.category_id=p.category_id WHERE p.product_id=? AND p.is_active=1',
+    'SELECT p.*,c.category_name
+    FROM products p
+    JOIN categories c ON c.category_id=p.category_id
+    WHERE p.product_id=? AND p.is_active=1',
 );
 $s->execute([$id]);
 $p = $s->fetch();
+
 if (!$p) {
     http_response_code(404);
     exit('Product not found.');
 }
+
 $v = $pdo->prepare(
-    'SELECT pv.variant_id,pv.price,pv.stock_quantity,pv.sku,sz.size_name,co.color_name FROM product_variants pv LEFT JOIN sizes sz ON sz.size_id=pv.size_id LEFT JOIN colors co ON co.color_id=pv.color_id WHERE pv.product_id=? AND pv.is_active=1 ORDER BY sz.size_id,co.color_id',
+    'SELECT pv.variant_id,pv.price,pv.stock_quantity,pv.sku,sz.size_name,co.color_name
+    FROM product_variants pv
+    LEFT JOIN sizes sz ON sz.size_id=pv.size_id
+    LEFT JOIN colors co ON co.color_id=pv.color_id
+    WHERE pv.product_id=? AND pv.is_active=1
+    ORDER BY sz.size_id,co.color_id',
 );
 $v->execute([$id]);
 $variants = $v->fetchAll();
 $im = $pdo->prepare(
-    'SELECT image_path,alt_text FROM product_images WHERE product_id=? ORDER BY sort_order,image_id',
+    'SELECT image_path,alt_text
+    FROM product_images
+    WHERE product_id=?
+    ORDER BY sort_order,image_id',
 );
 $im->execute([$id]);
 $images = $im->fetchAll();
 $image = $images[0] ?? null;
 $reviewError = '';
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'review') {
     csrf_check();
     require_login();
     $rating = (int) ($_POST['rating'] ?? 0);
     $review = moderate_review(trim($_POST['review_text'] ?? ''));
+
     if ($rating < 1 || $rating > 5 || $review === '') {
         $reviewError = 'Choose a rating and write a review.';
     } else {
         $can = $pdo->prepare(
-            "SELECT oi.order_item_id FROM order_items oi JOIN orders o ON o.order_id=oi.order_id JOIN order_statuses os ON os.order_status_id=o.order_status_id WHERE o.user_id=? AND oi.variant_id IN (SELECT variant_id FROM product_variants WHERE product_id=?) AND os.status_name IN ('Processing','Packed','Shipped','Delivered','Completed') LIMIT 1",
+            "SELECT oi.order_item_id
+            FROM order_items oi
+            JOIN orders o ON o.order_id=oi.order_id
+            JOIN order_statuses os ON os.order_status_id=o.order_status_id
+            WHERE o.user_id=?
+                AND oi.variant_id IN (
+                    SELECT variant_id FROM product_variants WHERE product_id=?
+                )
+                AND os.status_name IN ('Processing','Packed','Shipped','Delivered','Completed')
+            LIMIT 1",
         );
         $can->execute([current_user()['id'], $id]);
         $orderItem = $can->fetchColumn();
+
         if (!$orderItem) {
             $reviewError = 'You can review this product after purchasing it.';
         } else {
             $save = $pdo->prepare(
-                'INSERT INTO product_reviews(product_id,user_id,order_item_id,rating,review_text) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE rating=VALUES(rating),review_text=VALUES(review_text),updated_at=CURRENT_TIMESTAMP',
+                'INSERT INTO product_reviews(product_id,user_id,order_item_id,rating,review_text)
+                VALUES(?,?,?,?,?)
+                ON DUPLICATE KEY UPDATE
+                    rating=VALUES(rating),
+                    review_text=VALUES(review_text),
+                    updated_at=CURRENT_TIMESTAMP',
             );
             $save->execute([$id, current_user()['id'], $orderItem, $rating, $review]);
             flash('Review saved.');
@@ -47,136 +78,154 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
         }
     }
 }
+
 $reviews = $pdo->prepare(
-    'SELECT pr.rating,pr.review_text,pr.created_at,u.first_name,u.last_name FROM product_reviews pr JOIN users u ON u.user_id=pr.user_id WHERE pr.product_id=? ORDER BY pr.created_at DESC',
+    'SELECT pr.rating,pr.review_text,pr.created_at,u.first_name,u.last_name
+    FROM product_reviews pr
+    JOIN users u ON u.user_id=pr.user_id
+    WHERE pr.product_id=?
+    ORDER BY pr.created_at DESC',
 );
 $reviews->execute([$id]);
 $reviews = $reviews->fetchAll();
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     require_login();
     $variant = (int) ($_POST['variant_id'] ?? 0);
     $qty = max(1, min(99, (int) ($_POST['quantity'] ?? 1)));
     $check = $pdo->prepare(
-        'SELECT variant_id,stock_quantity FROM product_variants WHERE variant_id=? AND product_id=? AND is_active=1',
+        'SELECT variant_id,stock_quantity
+        FROM product_variants
+        WHERE variant_id=? AND product_id=? AND is_active=1',
     );
     $check->execute([$variant, $id]);
     $row = $check->fetch();
+
     if (!$row || $qty > (int) $row['stock_quantity']) {
         flash('Please select an available option and quantity.', 'error');
         redirect('/clothing-store-backup/product.php?id=' . $id);
     }
+
     $up = $pdo->prepare(
-        'INSERT INTO cart_items(user_id,variant_id,quantity) VALUES(?,?,?) ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)',
+        'INSERT INTO cart_items(user_id,variant_id,quantity)
+        VALUES(?,?,?)
+        ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)',
     );
     $up->execute([current_user()['id'], $variant, $qty]);
     flash('Added to your cart.');
     redirect('/clothing-store-backup/cart.php');
 }
+
 $pageTitle = $p['product_name'];
 require __DIR__ . '/includes/header.php';
 ?>
 
 <div class="pdp">
-  <div class="gallery">
-    <div class="product-image">
-      <?php if ($image): ?>
-      <img
-        data-main-img
-        src="<?= APP_BASE . '/' . e($image['image_path']) ?>"
-        alt="<?= e($image['alt_text'] ?? $p['product_name']) ?>"
-      />
-      <?php else: ?>
-      Product image
-      <?php endif; ?>
+    <div class="gallery">
+        <div class="product-image">
+            <?php if ($image): ?>
+                <img
+                    data-main-img
+                    src="<?= APP_BASE . '/' . e($image['image_path']) ?>"
+                    alt="<?= e($image['alt_text'] ?? $p['product_name']) ?>"
+                />
+            <?php else: ?>
+                Product image
+            <?php endif; ?>
+        </div>
+
+        <?php if (count($images) > 1): ?>
+            <div class="thumbs" aria-label="Product photos">
+                <?php foreach ($images as $index => $galleryImage): ?>
+                    <button
+                        type="button"
+                        data-thumb="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
+                        aria-current="<?= $index === 0 ? 'true' : 'false' ?>"
+                        aria-label="Show photo <?= $index + 1 ?>"
+                    >
+                        <img
+                            src="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
+                            alt=""
+                        />
+                    </button>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
     </div>
-    <?php if (count($images) > 1): ?>
-    <div class="thumbs" aria-label="Product photos">
-      <?php foreach ($images as $index => $galleryImage): ?>
-      <button
-        type="button"
-        data-thumb="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
-        aria-current="<?= $index === 0 ? 'true' : 'false' ?>"
-        aria-label="Show photo <?= $index + 1 ?>"
-      >
-        <img
-          src="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
-          alt=""
-        />
-      </button>
-      <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-  </div>
-  <section class="pdp-info">
-    <div class="eyebrow"><?= e($p['category_name']) ?></div>
-    <h1 class="page-title"><?= e($p['product_name']) ?></h1>
-    <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
-    <p><?= nl2br(e($p['description'] ?? '')) ?></p>
-    <?php if ($variants): ?>
-    <form method="post">
-      <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
-      <label>Size and color</label>
-      <select name="variant_id">
-        <option value="">Select option</option>
-        <?php foreach ($variants as $x): ?>
-        <option
-          value="<?= (int) $x['variant_id'] ?>"
-          <?= $x['stock_quantity'] < 1 ? 'disabled' : '' ?>
-        >
-          <?= e(
-              ($x['size_name'] ?? 'One size') .
-                  ' / ' .
-                  ($x['color_name'] ?? 'Default'),
-          ) ?> - <?= (int) $x['stock_quantity'] ?> in stock
-        </option>
-        <?php endforeach; ?>
-      </select>
-      <label>Quantity</label>
-      <input type="number" name="quantity" min="1" value="1" max="99" />
-      <button style="width: 100%; margin-top: 20px">Add to cart</button>
-    </form>
-    <?php else: ?>
-    <p class="muted">Options are currently unavailable.</p>
-    <?php endif; ?>
-  </section>
+
+    <section class="pdp-info">
+        <div class="eyebrow"><?= e($p['category_name']) ?></div>
+        <h1 class="page-title"><?= e($p['product_name']) ?></h1>
+        <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
+        <p><?= nl2br(e($p['description'] ?? '')) ?></p>
+        <?php if ($variants): ?>
+            <form method="post">
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+                <label>Size and color</label>
+                <select name="variant_id">
+                    <option value="">Select option</option>
+                    <?php foreach ($variants as $x): ?>
+                        <option
+                            value="<?= (int) $x['variant_id'] ?>"
+                            <?= $x['stock_quantity'] < 1 ? 'disabled' : '' ?>
+                        >
+                            <?= e(($x['size_name'] ?? 'One size') . ' / ' . ($x['color_name'] ?? 'Default')) ?>
+                            - <?= (int) $x['stock_quantity'] ?> in stock
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                <label>Quantity</label>
+                <input type="number" name="quantity" min="1" value="1" max="99" />
+                <button style="width: 100%; margin-top: 20px">Add to cart</button>
+            </form>
+        <?php else: ?>
+            <p class="muted">Options are currently unavailable.</p>
+        <?php endif; ?>
+    </section>
 </div>
+
 <section id="reviews">
-  <h2>Customer reviews</h2>
-  <?php if ($reviewError): ?>
-  <div class="notice error"><?= e($reviewError) ?></div>
-  <?php endif; ?>
-  <?php if (!$reviews): ?>
-  <p class="muted">No reviews yet.</p>
-  <?php endif; ?>
-  <?php foreach ($reviews as $r): ?>
-  <article class="review">
-    <b><?= e($r['first_name'] . ' ' . $r['last_name']) ?></b>
-    <span class="stars" aria-label="<?= (int) $r['rating'] ?> out of 5"
-      ><?= str_repeat('★', (int) $r['rating']) ?></span
-    >
-    <p><?= nl2br(e($r['review_text'])) ?></p>
-    <small><?= e($r['created_at']) ?></small>
-  </article>
-  <?php endforeach; ?>
-  <?php if (current_user()): ?>
-  <form class="form-card" style="margin-left: 0" method="post">
-    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
-    <input type="hidden" name="action" value="review" />
-    <label>Rating (1-5)</label>
-    <select name="rating">
-      <option value="5">5 - Excellent</option>
-      <option value="4">4 - Good</option>
-      <option value="3">3 - Average</option>
-      <option value="2">2 - Poor</option>
-      <option value="1">1 - Bad</option>
-    </select>
-    <label>Your review</label>
-    <textarea name="review_text"></textarea>
-    <button>Submit / update review</button>
-  </form>
-  <?php else: ?>
-  <p><a href="<?= APP_BASE ?>/user/login.php">Sign in</a> to review a product you purchased.</p>
-  <?php endif; ?>
+    <h2>Customer reviews</h2>
+    <?php if ($reviewError): ?>
+        <div class="notice error"><?= e($reviewError) ?></div>
+    <?php endif; ?>
+    <?php if (!$reviews): ?>
+        <p class="muted">No reviews yet.</p>
+    <?php endif; ?>
+    <?php foreach ($reviews as $r): ?>
+        <article class="review">
+            <b><?= e($r['first_name'] . ' ' . $r['last_name']) ?></b>
+            <span class="stars" aria-label="<?= (int) $r['rating'] ?> out of 5">
+                <?= str_repeat('★', (int) $r['rating']) ?>
+            </span>
+            <p><?= nl2br(e($r['review_text'])) ?></p>
+            <small><?= e($r['created_at']) ?></small>
+        </article>
+    <?php endforeach; ?>
+
+    <?php if (current_user()): ?>
+        <form class="form-card" style="margin-left: 0" method="post">
+            <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+            <input type="hidden" name="action" value="review" />
+            <label>Rating (1-5)</label>
+            <select name="rating">
+                <option value="5">5 - Excellent</option>
+                <option value="4">4 - Good</option>
+                <option value="3">3 - Average</option>
+                <option value="2">2 - Poor</option>
+                <option value="1">1 - Bad</option>
+            </select>
+            <label>Your review</label>
+            <textarea name="review_text"></textarea>
+            <button>Submit / update review</button>
+        </form>
+    <?php else: ?>
+        <p>
+            <a href="<?= APP_BASE ?>/user/login.php">Sign in</a>
+            to review a product you purchased.
+        </p>
+    <?php endif; ?>
 </section>
+
 <?php require __DIR__ . '/includes/footer.php'; ?>
