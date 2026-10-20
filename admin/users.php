@@ -20,10 +20,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $s = $pdo->prepare('UPDATE users SET role_id=? WHERE user_id=?');
                 $s->execute([$role, $id]);
                 flash('User role updated.');
+            } elseif ($action === 'password') {
+                $password = $_POST['new_password'] ?? '';
+                if (strlen($password) < 8) {
+                    throw new InvalidArgumentException('Use a password of at least 8 characters.');
+                }
+                $s = $pdo->prepare('UPDATE users SET password_hash=? WHERE user_id=?');
+                $s->execute([password_hash($password, PASSWORD_DEFAULT), $id]);
+                flash('User password changed.');
             }
             redirect(APP_BASE . '/admin/users.php');
         } catch (Throwable $e) {
-            $error = 'Could not update the user.';
+            $error = $e instanceof InvalidArgumentException
+                ? $e->getMessage()
+                : 'Could not update the user.';
         }
     }
 }
@@ -54,6 +64,7 @@ require __DIR__ . '/../includes/admin_header.php';
       <tr>
         <th>Name</th>
         <th>Email</th>
+        <th>Set password</th>
         <th>Role</th>
         <th>Status</th>
         <th>Joined</th>
@@ -71,6 +82,29 @@ require __DIR__ . '/../includes/admin_header.php';
         <td><?= e(
     $u['email'],
 ) ?></td>
+        <td>
+          <?php if ((int) $u['user_id'] === (int) current_user()['id']): ?>
+            <span class="muted">Use a separate account to change this password.</span>
+          <?php else: ?>
+            <form method="post" class="password-form">
+              <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+              <input type="hidden" name="user_id" value="<?= (int) $u['user_id'] ?>" />
+              <input type="hidden" name="action" value="password" />
+              <div class="password-field">
+                <input
+                  type="password"
+                  name="new_password"
+                  placeholder="New password"
+                  minlength="8"
+                  autocomplete="new-password"
+                  required
+                />
+                <button type="button" class="secondary" data-password-toggle aria-pressed="false">Show</button>
+              </div>
+              <button type="submit">Save password</button>
+            </form>
+          <?php endif; ?>
+        </td>
         <td>
           <form method="post">
             <input type="hidden" name="csrf" value="<?= e(
@@ -127,10 +161,23 @@ require __DIR__ . '/../includes/admin_header.php';
       </tr>
       <?php endforeach; ?>
       <?php if (!$users): ?>
-      <tr><td colspan="6" class="empty-note">No customer accounts found.</td></tr>
+      <tr><td colspan="7" class="empty-note">No customer accounts found.</td></tr>
       <?php endif; ?>
 
     </tbody>
   </table>
 </div>
+<script>
+(function () {
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      var input = button.parentElement.querySelector('input[name="new_password"]');
+      var visible = input.type === 'password';
+      input.type = visible ? 'text' : 'password';
+      button.textContent = visible ? 'Hide' : 'Show';
+      button.setAttribute('aria-pressed', visible ? 'true' : 'false');
+    });
+  });
+})();
+</script>
 <?php require __DIR__ . '/../includes/admin_footer.php'; ?>

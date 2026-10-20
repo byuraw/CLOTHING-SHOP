@@ -120,6 +120,10 @@ textarea{min-height:90px}
 .pdp-info{position:sticky;top:24px}
 .pdp-info .price{font-size:22px;margin:6px 0 18px}
 .pdp-info p{color:#4a4d52;max-width:52ch}
+.pdp-actions{display:flex;gap:10px;margin-top:20px}
+.pdp-actions button{flex:1;margin:0;padding:12px 16px}
+.pdp-actions button+button{background:#fff;color:var(--ink)}
+.pdp-actions button+button:hover{background:var(--ink);color:#fff}
 #reviews{margin-top:70px;padding-top:40px;border-top:1px solid var(--line)}
 #reviews h2{font:400 28px var(--sans);margin:0 0 20px}
 .review{padding:18px 0;border-bottom:1px solid var(--line)}

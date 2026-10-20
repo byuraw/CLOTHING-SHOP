@@ -89,11 +89,19 @@ $reviews = $pdo->prepare(
 $reviews->execute([$id]);
 $reviews = $reviews->fetchAll();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (
+    $_SERVER['REQUEST_METHOD'] === 'POST' &&
+    in_array($_POST['action'] ?? '', ['add_to_cart', 'checkout'], true)
+) {
     csrf_check();
     require_login();
     $variant = (int) ($_POST['variant_id'] ?? 0);
-    $qty = max(1, min(99, (int) ($_POST['quantity'] ?? 1)));
+    $qty = filter_var($_POST['quantity'] ?? null, FILTER_VALIDATE_INT);
+    $action = $_POST['action'];
+    if ($qty === false || $qty < 1 || $qty > 99) {
+        flash('Choose a quantity between 1 and 99.', 'error');
+        redirect(APP_BASE . '/product.php?id=' . $id);
+    }
     $check = $pdo->prepare(
         'SELECT variant_id,stock_quantity
         FROM product_variants
@@ -102,9 +110,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $check->execute([$variant, $id]);
     $row = $check->fetch();
 
-    if (!$row || $qty > (int) $row['stock_quantity']) {
+    if (!$row) {
         flash('Please select an available option and quantity.', 'error');
-        redirect('/clothing-store-backup/product.php?id=' . $id);
+        redirect(APP_BASE . '/product.php?id=' . $id);
+    }
+    $cartQuantity = $pdo->prepare(
+        'SELECT quantity FROM cart_items WHERE user_id=? AND variant_id=?',
+    );
+    $cartQuantity->execute([current_user()['id'], $variant]);
+    $alreadyInCart = (int) ($cartQuantity->fetchColumn() ?: 0);
+    if ($qty + $alreadyInCart > (int) $row['stock_quantity']) {
+        flash('The requested quantity exceeds the available stock.', 'error');
+        redirect(APP_BASE . '/product.php?id=' . $id);
     }
 
     $up = $pdo->prepare(
@@ -113,8 +130,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)',
     );
     $up->execute([current_user()['id'], $variant, $qty]);
+    if ($action === 'checkout') {
+        redirect(APP_BASE . '/checkout.php');
+    }
     flash('Added to your cart.');
-    redirect('/clothing-store-backup/cart.php');
+    redirect(APP_BASE . '/cart.php');
 }
 
 $pageTitle = $p['product_name'];
@@ -177,7 +197,10 @@ require __DIR__ . '/includes/header.php';
                 </select>
                 <label>Quantity</label>
                 <input type="number" name="quantity" min="1" value="1" max="99" />
-                <button style="width: 100%; margin-top: 20px">Add to cart</button>
+                <div class="pdp-actions">
+                    <button type="submit" name="action" value="add_to_cart">Add to cart</button>
+                    <button type="submit" name="action" value="checkout">Checkout</button>
+                </div>
             </form>
         <?php else: ?>
             <p class="muted">Options are currently unavailable.</p>

@@ -73,6 +73,11 @@ button.secondary:hover,.button.secondary:hover{background:#f0f0f0}
 .row>*{flex:1}
 td .row{flex-wrap:nowrap}
 td .row>button{flex:0 0 auto;margin:0}
+.password-form{min-width:230px}
+.password-field{display:flex;align-items:center;gap:6px}
+.password-field input{min-width:0}
+.password-field button{flex:0 0 auto;padding:9px 10px}
+.password-form>button{margin-top:6px}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px}
 .stat{background:#fff;border:1px solid #e6e6e6;border-radius:10px;padding:18px}
 .stat strong{display:block;font-size:24px;font-weight:700;margin-top:6px}
