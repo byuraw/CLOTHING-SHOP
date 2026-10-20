@@ -11,17 +11,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Category name is required.');
             }
             $q = $pdo->prepare(
-                'INSERT INTO categories(category_name,description,is_active) VALUES(?,?,1)',
+                'INSERT INTO product_categories(category_name,description,is_active) VALUES(?,?,1)',
             );
             $q->execute([$n, trim($_POST['description'] ?? '') ?: null]);
         } else {
             $n = trim($_POST['type_name'] ?? '');
-            $cid = (int) ($_POST['category_id'] ?? 0);
-            if (!$n || !$cid) {
-                throw new RuntimeException('Choose a category and enter a product type.');
+            if (!$n) {
+                throw new RuntimeException('Product type name is required.');
             }
-            $q = $pdo->prepare('INSERT INTO product_types(type_name,category_id) VALUES(?,?)');
-            $q->execute([$n, $cid]);
+            $q = $pdo->prepare('INSERT INTO product_types(type_name) VALUES(?)');
+            $q->execute([$n]);
         }
         flash('Saved successfully.');
         redirect('/clothing-store-backup/admin/catalog.php');
@@ -33,7 +32,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 $cats = $pdo
-    ->query('SELECT category_id,category_name FROM categories ORDER BY category_name')
+    ->query('SELECT product_category_id,category_name FROM product_categories ORDER BY category_name')
     ->fetchAll();
 $types = $pdo
     ->query('SELECT product_type_id,type_name FROM product_types ORDER BY type_name')
@@ -42,7 +41,7 @@ $pageTitle = 'Catalog';
 require __DIR__ . '/../includes/admin_header.php';
 ?>
 
-<h1 class="page-title">Categories and product types</h1>
+<h1 class="page-title">Product categories and types</h1>
 <?php if (
     $error
 ): ?>
@@ -54,7 +53,7 @@ require __DIR__ . '/../includes/admin_header.php';
 
 <div class="row">
   <form class="form-card" method="post">
-    <h2>Add category</h2>
+    <h2>Add product category</h2>
     <input type="hidden" name="csrf" value="<?= e(
     csrf_token(),
 ) ?>" /><input type="hidden" name="kind" value="category" /><label>Name</label><input name="category_name" /><label>Description</label
@@ -64,22 +63,10 @@ require __DIR__ . '/../includes/admin_header.php';
     <h2>Add product type</h2>
     <input type="hidden" name="csrf" value="<?= e(
     csrf_token(),
-) ?>" /><input type="hidden" name="kind" value="type" /><label>Category</label
-    ><select name="category_id">
-      <option value="">Choose a category</option>
-      <?php foreach (
-    $cats
-    as $c
-): ?>
-
-      <option value="<?= (int) $c['category_id'] ?>"><?= e(
-    $c['category_name'],
-) ?></option>
-      <?php endforeach; ?></select
-    ><label>Type name</label><input name="type_name" /><button>Add type</button>
+) ?>" /><input type="hidden" name="kind" value="type" /><label>Type name</label><input name="type_name" /><button>Add type</button>
   </form>
 </div>
-<h2>Current categories</h2>
+<h2>Current product categories</h2>
 <?php if ($cats): ?>
 <p><?= e(
     implode(', ', array_column($cats, 'category_name')),

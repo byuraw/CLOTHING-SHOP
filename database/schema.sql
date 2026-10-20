@@ -45,8 +45,8 @@ CREATE TABLE addresses (
   INDEX idx_addresses_user_default (user_id, is_default)
 ) ENGINE = InnoDB;
 
-CREATE TABLE categories (
-  category_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+CREATE TABLE product_categories (
+  product_category_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   category_name VARCHAR(100) NOT NULL UNIQUE,
   description TEXT NULL,
   is_active TINYINT(1) NOT NULL DEFAULT 1
@@ -54,15 +54,19 @@ CREATE TABLE categories (
 
 CREATE TABLE product_types (
   product_type_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  type_name VARCHAR(100) NOT NULL UNIQUE,
-  category_id INT UNSIGNED NULL,
-  FOREIGN KEY (category_id) REFERENCES categories (category_id) ON DELETE SET NULL
+  type_name VARCHAR(100) NOT NULL UNIQUE
 ) ENGINE = InnoDB;
+
+INSERT INTO product_categories (category_name)
+VALUES ("Men's Clothing"), ("Women's Clothing");
+
+INSERT INTO product_types (type_name)
+VALUES ('Top'), ('Bottom'), ('Headwear');
 
 CREATE TABLE products (
   product_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  category_id INT UNSIGNED NOT NULL,
-  product_type_id INT UNSIGNED NULL,
+  product_category_id INT UNSIGNED NOT NULL,
+  product_type_id INT UNSIGNED NOT NULL,
   product_name VARCHAR(180) NOT NULL,
   slug VARCHAR(200) NOT NULL UNIQUE,
   description TEXT NULL,
@@ -71,9 +75,9 @@ CREATE TABLE products (
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT chk_products_price CHECK (base_price >= 0),
-  FOREIGN KEY (category_id) REFERENCES categories (category_id),
-  FOREIGN KEY (product_type_id) REFERENCES product_types (product_type_id) ON DELETE SET NULL,
-  INDEX idx_products_active_category (is_active, category_id)
+  FOREIGN KEY (product_category_id) REFERENCES product_categories (product_category_id),
+  FOREIGN KEY (product_type_id) REFERENCES product_types (product_type_id),
+  INDEX idx_products_active_category (is_active, product_category_id)
 ) ENGINE = InnoDB;
 
 CREATE TABLE product_images (
@@ -215,7 +219,6 @@ CREATE TABLE inventory_transactions (
   variant_id BIGINT UNSIGNED NOT NULL,
   changed_by BIGINT UNSIGNED NULL,
   quantity_change INT NOT NULL,
-  reason VARCHAR(100) NOT NULL,
   reference_text VARCHAR(100) NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (variant_id) REFERENCES product_variants (variant_id),
@@ -295,21 +298,22 @@ VALUES
   ('E-Wallet');
 
 INSERT INTO
-  sizes (size_name)
+  sizes (size_id, size_name)
 VALUES
-  ('XS'),
-  ('S'),
-  ('M'),
-  ('L'),
-  ('XL'),
-  ('XXL');
+  (1, 'XS'),
+  (2, 'S'),
+  (3, 'M'),
+  (4, 'L'),
+  (5, 'XL'),
+  (6, 'XXL'),
+  (7, 'One Size');
 
 INSERT INTO
-  colors (color_name, color_code)
+  colors (color_id, color_name, color_code)
 VALUES
-  ('Black', '#000000'),
-  ('White', '#FFFFFF'),
-  ('Blue', '#0000FF');
+  (1, 'Black', '#000000'),
+  (2, 'White', '#FFFFFF'),
+  (3, 'Blue', '#0000FF');
 
 CREATE TABLE product_reviews (
   review_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

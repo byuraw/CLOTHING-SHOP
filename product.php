@@ -3,9 +3,10 @@ require_once __DIR__ . '/includes/functions.php';
 
 $id = (int) ($_GET['id'] ?? 0);
 $s = $pdo->prepare(
-    'SELECT p.*,c.category_name
+    'SELECT p.*,c.category_name,t.type_name
     FROM products p
-    JOIN categories c ON c.category_id=p.category_id
+    JOIN product_categories c ON c.product_category_id=p.product_category_id
+    LEFT JOIN product_types t ON t.product_type_id=p.product_type_id
     WHERE p.product_id=? AND p.is_active=1',
 );
 $s->execute([$id]);
@@ -17,7 +18,7 @@ if (!$p) {
 }
 
 $v = $pdo->prepare(
-    'SELECT pv.variant_id,pv.price,pv.stock_quantity,pv.sku,sz.size_name,co.color_name
+    'SELECT pv.variant_id,pv.size_id,pv.color_id,pv.price,pv.stock_quantity,pv.sku,sz.size_name,co.color_name
     FROM product_variants pv
     LEFT JOIN sizes sz ON sz.size_id=pv.size_id
     LEFT JOIN colors co ON co.color_id=pv.color_id
@@ -175,33 +176,81 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <section class="pdp-info">
-        <div class="eyebrow"><?= e($p['category_name']) ?></div>
+        <div class="eyebrow"><?= e($p['category_name'] . ($p['type_name'] ? ' / ' . $p['type_name'] : '')) ?></div>
         <h1 class="page-title"><?= e($p['product_name']) ?></h1>
         <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
         <p><?= nl2br(e($p['description'] ?? '')) ?></p>
         <?php if ($variants): ?>
-            <form method="post">
+            <?php
+            $availableSizes = [];
+            $availableColors = [];
+            $variantOptions = [];
+            foreach ($variants as $variantOption) {
+                $sizeKey = (string) ($variantOption['size_id'] ?? 0);
+                $colorKey = (string) ($variantOption['color_id'] ?? 0);
+                $availableSizes[$sizeKey] = $variantOption['size_name'] ?? 'One size';
+                $availableColors[$colorKey] = $variantOption['color_name'] ?? 'Default';
+                $variantOptions[$sizeKey . ':' . $colorKey] = [
+                    'id' => (int) $variantOption['variant_id'],
+                    'stock' => (int) $variantOption['stock_quantity'],
+                ];
+            }
+            ?>
+            <form method="post" data-variant-options="<?= e(
+                json_encode($variantOptions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
+            ) ?>">
                 <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
-                <label>Size and color</label>
-                <select name="variant_id">
-                    <option value="">Select option</option>
-                    <?php foreach ($variants as $x): ?>
-                        <option
-                            value="<?= (int) $x['variant_id'] ?>"
-                            <?= $x['stock_quantity'] < 1 ? 'disabled' : '' ?>
-                        >
-                            <?= e(($x['size_name'] ?? 'One size') . ' / ' . ($x['color_name'] ?? 'Default')) ?>
-                            - <?= (int) $x['stock_quantity'] ?> in stock
-                        </option>
+                <input type="hidden" name="variant_id" value="" />
+                <label for="size-option">Size</label>
+                <select id="size-option" name="size_option" required>
+                    <option value="">Select size</option>
+                    <?php foreach ($availableSizes as $sizeId => $sizeName): ?>
+                        <option value="<?= e($sizeId) ?>"><?= e($sizeName) ?></option>
                     <?php endforeach; ?>
                 </select>
+                <label for="color-option">Color</label>
+                <select id="color-option" name="color_option" required>
+                    <option value="">Select color</option>
+                    <?php foreach ($availableColors as $colorId => $colorName): ?>
+                        <option value="<?= e($colorId) ?>"><?= e($colorName) ?></option>
+                    <?php endforeach; ?>
+                </select>
+                <p class="muted" data-variant-stock aria-live="polite">Select a size and color.</p>
                 <label>Quantity</label>
                 <input type="number" name="quantity" min="1" value="1" max="99" />
                 <div class="pdp-actions">
-                    <button type="submit" name="action" value="add_to_cart">Add to cart</button>
-                    <button type="submit" name="action" value="checkout">Checkout</button>
+                    <button type="submit" name="action" value="add_to_cart" disabled>Add to cart</button>
+                    <button type="submit" name="action" value="checkout" disabled>Checkout</button>
                 </div>
             </form>
+            <script>
+                document.querySelectorAll('[data-variant-options]').forEach(function (form) {
+                    var options = JSON.parse(form.dataset.variantOptions);
+                    var size = form.querySelector('[name="size_option"]');
+                    var color = form.querySelector('[name="color_option"]');
+                    var variant = form.querySelector('[name="variant_id"]');
+                    var stockMessage = form.querySelector('[data-variant-stock]');
+                    var buttons = form.querySelectorAll('button[type="submit"]');
+
+                    function updateVariant() {
+                        var selected = options[size.value + ':' + color.value];
+                        variant.value = selected ? selected.id : '';
+                        buttons.forEach(function (button) {
+                            button.disabled = !selected || selected.stock < 1;
+                        });
+                        stockMessage.textContent = !size.value || !color.value
+                            ? 'Select a size and color.'
+                            : !selected
+                                ? 'This size and color combination is unavailable.'
+                                : selected.stock < 1
+                                    ? 'Out of stock.'
+                                    : selected.stock + ' in stock.';
+                    }
+
+                    size.addEventListener('change', updateVariant);
+                    color.addEventListener('change', updateVariant);
+                });
+            </script>
         <?php else: ?>
             <p class="muted">Options are currently unavailable.</p>
         <?php endif; ?>

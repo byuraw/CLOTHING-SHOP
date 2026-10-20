@@ -140,6 +140,7 @@ th,td{text-align:left;border-bottom:1px solid var(--line);padding:14px 12px}
 th{background:var(--tile);font-weight:500;font-size:13px}
 .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
 .row>*{flex:1}
+.shop-search-field{flex:0 0 100%}
 .admin-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px}
 .admin-links a{padding:20px;border:1px solid var(--line);text-decoration:none;color:var(--ink)}
 .admin-links a:hover{background:var(--tile)}

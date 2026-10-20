@@ -5,7 +5,7 @@ $from = $_GET['from'] ?? date('Y-m-01');
 $to = $_GET['to'] ?? date('Y-m-d');
 $args = [$from . ' 00:00:00', $to . ' 23:59:59'];
 $q = $pdo->prepare(
-    "SELECT COUNT(*) orders_count,COALESCE(SUM(o.total_amount),0) sales FROM orders o JOIN order_statuses s ON s.order_status_id=o.order_status_id WHERE o.placed_at BETWEEN ? AND ? AND s.status_name NOT IN ('Cancelled')",
+    "SELECT COUNT(*) orders_count,COALESCE(SUM(o.total_amount),0) sales FROM orders o JOIN order_statuses s ON s.order_status_id=o.order_status_id WHERE s.status_name='Completed' AND EXISTS (SELECT 1 FROM order_status_history h WHERE h.order_id=o.order_id AND h.order_status_id=o.order_status_id AND h.changed_at BETWEEN ? AND ?)",
 );
 $q->execute($args);
 $summary = $q->fetch();
@@ -15,7 +15,7 @@ $q = $pdo->prepare(
 $q->execute([$from, $to]);
 $expenses = (float) $q->fetchColumn();
 $q = $pdo->prepare(
-    "SELECT oi.product_name_snapshot,SUM(oi.quantity) units FROM order_items oi JOIN orders o ON o.order_id=oi.order_id JOIN order_statuses s ON s.order_status_id=o.order_status_id WHERE o.placed_at BETWEEN ? AND ? AND s.status_name<>'Cancelled' GROUP BY oi.product_name_snapshot ORDER BY units DESC LIMIT 10",
+    "SELECT oi.product_name_snapshot,SUM(oi.quantity) units FROM order_items oi JOIN orders o ON o.order_id=oi.order_id JOIN order_statuses s ON s.order_status_id=o.order_status_id WHERE s.status_name='Completed' AND EXISTS (SELECT 1 FROM order_status_history h WHERE h.order_id=o.order_id AND h.order_status_id=o.order_status_id AND h.changed_at BETWEEN ? AND ?) GROUP BY oi.product_name_snapshot ORDER BY units DESC LIMIT 10",
 );
 $q->execute($args);
 $best = $q->fetchAll();
@@ -82,7 +82,8 @@ require __DIR__ . '/../includes/admin_header.php';
     </tbody>
   </table>
 </div>
-<h2>Low stock (5 or fewer)</h2>
+<details>
+  <summary>Low stock (5 or fewer)</summary>
 <div class="table-wrap">
   <table>
     <thead>
@@ -113,4 +114,5 @@ require __DIR__ . '/../includes/admin_header.php';
     </tbody>
   </table>
 </div>
+</details>
 <?php require __DIR__ . '/../includes/admin_footer.php'; ?>

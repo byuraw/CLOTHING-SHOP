@@ -24,6 +24,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         if ($oldLabel === 'Cancelled' && $new !== $oldId) {
             throw new RuntimeException('Cancelled orders cannot be reopened from this screen.');
         }
+        if ($oldLabel === 'Completed' && $new !== $oldId) {
+            throw new RuntimeException('Completed orders cannot be changed.');
+        }
         $get = $pdo->prepare('SELECT status_name FROM order_statuses WHERE order_status_id=?');
         $get->execute([$new]);
         $newLabel = $get->fetchColumn();
@@ -41,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         'UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?',
                     )->execute([$line['quantity'], $line['variant_id']]);
                     $pdo->prepare(
-                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'CANCELLATION',?)",
+                        'INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text) VALUES(?,?,?,?)',
                     )->execute([
                         $line['variant_id'],
                         current_user()['id'],
@@ -126,6 +129,9 @@ require __DIR__ . '/../includes/admin_header.php';
     2,
 ) ?></td>
         <td>
+          <?php if ($o['status_name'] === 'Completed'): ?>
+          <span><?= e($o['status_name']) ?></span>
+          <?php else: ?>
           <form class="row" method="post">
             <input type="hidden" name="csrf" value="<?= e(
     csrf_token(),
@@ -142,6 +148,7 @@ require __DIR__ . '/../includes/admin_header.php';
               <?php endforeach; ?></select
             ><button>Save</button>
           </form>
+          <?php endif; ?>
         </td>
       </tr>
       <?php endforeach; ?>

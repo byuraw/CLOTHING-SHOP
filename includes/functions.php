@@ -108,3 +108,116 @@ function moderate_review(string $text): string
     }
     return $text;
 }
+function clothing_sku(
+    string $categoryName,
+    string $typeName,
+    string $productName,
+    ?int $sizeId,
+    ?int $colorId,
+): string {
+    $normalize = static fn(string $value): string => strtolower(
+        preg_replace('/[^a-z0-9]/i', '', $value) ?? '',
+    );
+    $genderPrefix = [
+        'mensclothing' => 'M',
+        'womensclothing' => 'W',
+    ][$normalize($categoryName)] ?? null;
+    $typePrefix = [
+        'top' => 'T',
+        'tops' => 'T',
+        'bottom' => 'B',
+        'bottoms' => 'B',
+        'headwear' => 'H',
+    ][$normalize($typeName)] ?? null;
+    $catalog = [
+        'MT' => [
+            'Basic T-Shirt',
+            'Polo Shirt',
+            'Button-Down Shirt',
+            'Hoodie',
+            'Sweatshirt',
+            'Tank Top',
+            'Henley Shirt',
+            'Flannel Shirt',
+            'Long-Sleeve Shirt',
+            'Knit Sweater',
+        ],
+        'MB' => [
+            'Slim-Fit Jeans',
+            'Straight-Leg Jeans',
+            'Cargo Pants',
+            'Chino Pants',
+            'Jogger Pants',
+            'Denim Shorts',
+            'Bermuda Shorts',
+            'Dress Pants',
+            'Sweatpants',
+            'Linen Trousers',
+        ],
+        'MH' => [
+            'Baseball Cap',
+            'Bucket Hat',
+            'Beanie',
+            'Fedora Hat',
+            'Flat Cap',
+            'Snapback Cap',
+            'Trucker Hat',
+            'Beret',
+            'Panama Hat',
+            'Fisherman Beanie',
+        ],
+        'WT' => [
+            'Basic T-Shirt',
+            'Crop Top',
+            'Blouse',
+            'Camisole',
+            'Tank Top',
+            'Off-Shoulder Top',
+            'Halter Top',
+            'Bodysuit',
+            'Cardigan',
+            'Knit Sweater',
+        ],
+        'WB' => [
+            'Skinny Jeans',
+            'Wide-Leg Jeans',
+            'Cargo Pants',
+            'High-Waisted Trousers',
+            'Denim Shorts',
+            'Mini Skirt',
+            'Midi Skirt',
+            'Maxi Skirt',
+            'Leggings',
+            'Palazzo Pants',
+        ],
+        'WH' => [
+            'Baseball Cap',
+            'Bucket Hat',
+            'Beanie',
+            'Beret',
+            'Wide-Brim Sun Hat',
+            'Fedora Hat',
+            'Straw Hat',
+            'Visor Cap',
+            'Cloche Hat',
+            'Newsboy Cap',
+        ],
+    ];
+    if ($genderPrefix === null || $typePrefix === null) {
+        throw new RuntimeException('Choose a supported product category and type.');
+    }
+    $prefix = $genderPrefix . $typePrefix;
+    $productKey = $normalize($productName);
+    foreach ($catalog[$prefix] as $index => $catalogName) {
+        if ($normalize($catalogName) === $productKey) {
+            return sprintf(
+                '%s-%d-%d-%d',
+                $prefix,
+                $index + 1,
+                $sizeId ?? 7,
+                $colorId ?? 0,
+            );
+        }
+    }
+    throw new RuntimeException("The product name does not match the selected clothing category's SKU catalog.");
+}

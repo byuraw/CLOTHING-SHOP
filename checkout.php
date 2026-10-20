@@ -99,8 +99,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             WHERE variant_id=? AND stock_quantity>=?',
         );
         $inv = $pdo->prepare(
-            "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text)
-            VALUES(?,?,?,'SALE',?)",
+            'INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text)
+            VALUES(?,?,?,?)',
         );
 
         foreach ($items as $i) {

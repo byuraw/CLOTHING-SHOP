@@ -31,36 +31,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             flash($count ? 'Product photos uploaded.' : 'Choose at least one photo.');
         } elseif ($action === 'product') {
             $name = trim($_POST['product_name'] ?? '');
-            $cat = (int) ($_POST['category_id'] ?? 0);
+            $categoryId = (int) ($_POST['product_category_id'] ?? 0);
             $price = filter_var($_POST['base_price'] ?? null, FILTER_VALIDATE_FLOAT);
             $slug =
                 strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $name), '-')) .
                 '-' .
                 bin2hex(random_bytes(2));
-            if (!$name || !$cat || $price === false || $price < 0) {
-                throw new RuntimeException('Enter product name, category, and valid price.');
+            if (!$name || !$categoryId || $price === false || $price < 0) {
+                throw new RuntimeException('Enter product name, product category, and valid price.');
             }
             $typeValue = trim((string) ($_POST['product_type_id'] ?? ''));
             $typeId = $typeValue === ''
                 ? null
                 : filter_var($typeValue, FILTER_VALIDATE_INT);
-            if ($typeId === false || ($typeId !== null && $typeId < 1)) {
+            if ($typeId === false || $typeId === null || $typeId < 1) {
+                throw new RuntimeException('Choose a product type.');
+            }
+            $typeCheck = $pdo->prepare('SELECT COUNT(*) FROM product_types WHERE product_type_id=?');
+            $typeCheck->execute([$typeId]);
+            if (!$typeCheck->fetchColumn()) {
                 throw new RuntimeException('Choose a valid product type.');
             }
-            if ($typeId !== null) {
-                $typeCheck = $pdo->prepare(
-                    'SELECT COUNT(*) FROM product_types WHERE product_type_id=? AND category_id=?',
-                );
-                $typeCheck->execute([$typeId, $cat]);
-                if (!$typeCheck->fetchColumn()) {
-                    throw new RuntimeException('Choose a product type that belongs to the selected category.');
-                }
+            $catalogInfo = $pdo->prepare(
+                'SELECT category_name,type_name
+                FROM product_categories
+                JOIN product_types ON product_type_id=?
+                WHERE product_category_id=? AND is_active=1',
+            );
+            $catalogInfo->execute([$typeId, $categoryId]);
+            $catalogInfo = $catalogInfo->fetch();
+            if (!$catalogInfo) {
+                throw new RuntimeException('Choose a valid product category and type.');
             }
+            clothing_sku($catalogInfo['category_name'], $catalogInfo['type_name'], $name, null, null);
             $q = $pdo->prepare(
-                'INSERT INTO products(category_id,product_type_id,product_name,slug,description,base_price,is_active) VALUES(?,?,?,?,?,?,1)',
+                'INSERT INTO products(product_category_id,product_type_id,product_name,slug,description,base_price,is_active) VALUES(?,?,?,?,?,?,1)',
             );
             $q->execute([
-                $cat,
+                $categoryId,
                 $typeId,
                 $name,
                 $slug,
@@ -89,35 +97,106 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif ($action === 'edit') {
             $pid = (int) ($_POST['product_id'] ?? 0);
             $name = trim($_POST['product_name'] ?? '');
-            $cat = (int) ($_POST['category_id'] ?? 0);
+            $categoryId = (int) ($_POST['product_category_id'] ?? 0);
+            $typeId = filter_var($_POST['product_type_id'] ?? null, FILTER_VALIDATE_INT);
             $price = filter_var($_POST['base_price'] ?? null, FILTER_VALIDATE_FLOAT);
-            if (!$pid || $name === '' || !$cat || $price === false || $price < 0) {
-                throw new RuntimeException('Enter a product name, category, and valid price.');
+            if (
+                !$pid ||
+                $name === '' ||
+                !$categoryId ||
+                $typeId === false ||
+                $typeId < 1 ||
+                $price === false ||
+                $price < 0
+            ) {
+                throw new RuntimeException('Enter a product name, category, type, and valid price.');
             }
             $slug =
                 strtolower(trim(preg_replace('/[^a-z0-9]+/i', '-', $name), '-')) .
                 '-' .
                 bin2hex(random_bytes(3));
-            $q = $pdo->prepare(
-                'UPDATE products SET category_id=?,product_name=?,slug=?,description=?,base_price=? WHERE product_id=?',
+            $catalogInfo = $pdo->prepare(
+                'SELECT category_name,type_name
+                FROM product_categories
+                JOIN product_types ON product_type_id=?
+                WHERE product_category_id=? AND is_active=1',
             );
-            $q->execute([$cat, $name, $slug, trim($_POST['description'] ?? ''), $price, $pid]);
+            $catalogInfo->execute([$typeId, $categoryId]);
+            $catalogInfo = $catalogInfo->fetch();
+            if (!$catalogInfo) {
+                throw new RuntimeException('Choose a valid product category and type.');
+            }
+            clothing_sku($catalogInfo['category_name'], $catalogInfo['type_name'], $name, null, null);
+            $pdo->beginTransaction();
+            try {
+                $q = $pdo->prepare(
+                    'UPDATE products SET product_category_id=?,product_type_id=?,product_name=?,slug=?,description=?,base_price=? WHERE product_id=?',
+                );
+                $q->execute([$categoryId, $typeId, $name, $slug, trim($_POST['description'] ?? ''), $price, $pid]);
+                $variants = $pdo->prepare(
+                    'SELECT variant_id,size_id,color_id FROM product_variants WHERE product_id=?',
+                );
+                $variants->execute([$pid]);
+                $saveSku = $pdo->prepare('UPDATE product_variants SET sku=? WHERE variant_id=?');
+                foreach ($variants->fetchAll() as $variant) {
+                    $sku = clothing_sku(
+                        $catalogInfo['category_name'],
+                        $catalogInfo['type_name'],
+                        $name,
+                        $variant['size_id'] === null ? null : (int) $variant['size_id'],
+                        $variant['color_id'] === null ? null : (int) $variant['color_id'],
+                    );
+                    $saveSku->execute([$sku, $variant['variant_id']]);
+                }
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw $e;
+            }
             flash('Product updated.');
         } elseif ($action === 'variant') {
             $pid = (int) ($_POST['product_id'] ?? 0);
-            $sku = trim($_POST['sku'] ?? '');
             $price = filter_var($_POST['price'] ?? null, FILTER_VALIDATE_FLOAT);
             $stock = max(0, (int) ($_POST['stock_quantity'] ?? 0));
-            if (!$pid || !$sku || $price === false || $price < 0) {
-                throw new RuntimeException('Select a product and enter a SKU and valid price.');
+            if (!$pid || $price === false || $price < 0) {
+                throw new RuntimeException('Select a product and enter a valid price.');
             }
+            $product = $pdo->prepare(
+                'SELECT p.product_name,pc.category_name,pt.type_name FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1',
+            );
+            $product->execute([$pid]);
+            $product = $product->fetch();
+            if (!$product) {
+                throw new RuntimeException('Choose a valid product.');
+            }
+            $sizeValue = trim((string) ($_POST['size_id'] ?? ''));
+            $colorValue = trim((string) ($_POST['color_id'] ?? ''));
+            $sizeId = $sizeValue === '' ? null : filter_var($sizeValue, FILTER_VALIDATE_INT);
+            $colorId = $colorValue === '' ? null : filter_var($colorValue, FILTER_VALIDATE_INT);
+            if (
+                $sizeId === false ||
+                ($sizeId !== null && $sizeId < 1) ||
+                $colorId === false ||
+                ($colorId !== null && $colorId < 1)
+            ) {
+                throw new RuntimeException('Choose valid size and color options.');
+            }
+            $sku = clothing_sku(
+                $product['category_name'],
+                $product['type_name'],
+                $product['product_name'],
+                $sizeId,
+                $colorId,
+            );
             $q = $pdo->prepare(
                 'INSERT INTO product_variants(product_id,size_id,color_id,sku,price,stock_quantity,is_active) VALUES(?,?,?,?,?,?,1)',
             );
             $q->execute([
                 $pid,
-                $_POST['size_id'] ?? '' ?: null,
-                $_POST['color_id'] ?? '' ?: null,
+                $sizeId,
+                $colorId,
                 $sku,
                 $price,
                 $stock,
@@ -125,7 +204,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $variantId = (int) $pdo->lastInsertId();
             if ($stock > 0) {
                 $i = $pdo->prepare(
-                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Initial variant stock')",
+                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text) VALUES(?,?,?,'Initial variant stock')",
                 );
                 $i->execute([$variantId, current_user()['id'], $stock]);
             }
@@ -145,11 +224,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $cats = $pdo
     ->query(
-        'SELECT category_id,category_name FROM categories WHERE is_active=1 ORDER BY category_name',
+        'SELECT product_category_id,category_name FROM product_categories WHERE is_active=1 ORDER BY category_name',
     )
     ->fetchAll();
 $types = $pdo
-    ->query('SELECT product_type_id,type_name,category_id FROM product_types ORDER BY type_name')
+    ->query('SELECT product_type_id,type_name FROM product_types ORDER BY type_name')
     ->fetchAll();
 $products = $pdo
     ->query('SELECT product_id,product_name FROM products WHERE is_active=1 ORDER BY product_name')
@@ -158,7 +237,7 @@ $sizes = $pdo->query('SELECT size_id,size_name FROM sizes ORDER BY size_id')->fe
 $colors = $pdo->query('SELECT color_id,color_name FROM colors ORDER BY color_name')->fetchAll();
 $list = $pdo
     ->query(
-        'SELECT p.product_id,p.product_name,p.description,p.category_id,p.base_price,c.category_name,(SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.product_id AND v.is_active=1) variants FROM products p JOIN categories c ON c.category_id=p.category_id WHERE p.is_active=1 ORDER BY p.created_at DESC',
+        'SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.product_type_id,p.base_price,pc.category_name,pt.type_name,(SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.product_id AND v.is_active=1) variants FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.is_active=1 ORDER BY p.created_at DESC',
     )
     ->fetchAll();
 $pageTitle = 'Products';
@@ -178,26 +257,26 @@ require __DIR__ . '/../includes/admin_header.php';
     <h2>New product</h2>
     <input type="hidden" name="csrf" value="<?= e(
     csrf_token(),
-) ?>" /><input type="hidden" name="action" value="product" /><label>Name</label><input name="product_name" /><label>Category</label
-    ><select name="category_id">
+) ?>" /><input type="hidden" name="action" value="product" /><label>Name</label><input name="product_name" /><label>Product category</label
+    ><select name="product_category_id">
       <?php foreach (
     $cats
     as $c
 ): ?>
 
-      <option value="<?= (int) $c['category_id'] ?>"><?= e(
+      <option value="<?= (int) $c['product_category_id'] ?>"><?= e(
     $c['category_name'],
 ) ?></option>
       <?php endforeach; ?></select
-    ><label>Type (optional)</label
+    ><label>Type</label
     ><select name="product_type_id">
-      <option value="">Choose later</option>
+      <option value="">Choose a type</option>
       <?php foreach (
     $types
     as $t
 ): ?>
 
-      <option value="<?= (int) $t['product_type_id'] ?>" data-category-id="<?= (int) $t['category_id'] ?>"><?= e(
+      <option value="<?= (int) $t['product_type_id'] ?>"><?= e(
     $t['type_name'],
 ) ?></option>
       <?php endforeach; ?></select
@@ -219,7 +298,7 @@ require __DIR__ . '/../includes/admin_header.php';
     $p['product_name'],
 ) ?></option>
       <?php endforeach; ?></select
-    ><label>SKU</label><input name="sku" /><label>Size</label
+    ><label>SKU</label><p class="muted">Generated automatically from product, size, and color.</p><label>Size</label
     ><select name="size_id">
       <option value="">N/A</option>
       <?php foreach (
@@ -297,18 +376,22 @@ require __DIR__ . '/../includes/admin_header.php';
             /><textarea name="description"><?= e(
     $p['description'] ?? '',
 ) ?></textarea
-            ><select name="category_id">
+            ><select name="product_category_id">
               <?php foreach (
     $cats
     as $c
 ): ?>
 
-              <option value="<?= (int) $c['category_id'] ?>" <?= (int) $p['category_id'] ===
-(int) $c['category_id']
+              <option value="<?= (int) $c['product_category_id'] ?>" <?= (int) $p['product_category_id'] ===
+(int) $c['product_category_id']
     ? 'selected'
     : '' ?>><?= e(
     $c['category_name'],
 ) ?></option>
+              <?php endforeach; ?></select
+            ><select name="product_type_id">
+              <?php foreach ($types as $type): ?>
+              <option value="<?= (int) $type['product_type_id'] ?>" <?= (int) $p['product_type_id'] === (int) $type['product_type_id'] ? 'selected' : '' ?>><?= e($type['type_name']) ?></option>
               <?php endforeach; ?></select
             ><input type="number" name="base_price" step="0.01" min="0" value="<?= e(
     $p['base_price'],
@@ -316,7 +399,7 @@ require __DIR__ . '/../includes/admin_header.php';
           </form>
         </td>
         <td><?= e(
-    $p['category_name'],
+    $p['category_name'] . ' / ' . $p['type_name'],
 ) ?></td>
         <td>₱<?= number_format((float) $p['base_price'], 2) ?></td>
         <td><?= (int) $p[
@@ -342,22 +425,4 @@ require __DIR__ . '/../includes/admin_header.php';
     </tbody>
   </table>
 </div>
-<script>
-(function () {
-  var category = document.querySelector('[name="category_id"]');
-  var type = document.querySelector('[name="product_type_id"]');
-  if (!category || !type) return;
-
-  function filterTypes() {
-    Array.prototype.forEach.call(type.options, function (option) {
-      var matches = !option.value || option.dataset.categoryId === category.value;
-      option.hidden = !matches;
-      if (!matches && option.selected) type.value = '';
-    });
-  }
-
-  category.addEventListener('change', filterTypes);
-  filterTypes();
-})();
-</script>
 <?php require __DIR__ . '/../includes/admin_footer.php'; ?>

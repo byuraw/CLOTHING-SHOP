@@ -7,7 +7,7 @@ $base = "
         p.product_id,
         p.product_name,
         p.base_price,
-        c.category_id,
+        c.product_category_id AS category_id,
         c.category_name,
         (
             SELECT pi.image_path
@@ -22,7 +22,7 @@ $base = "
             WHERE r.product_id = p.product_id
         ) AS rating
     FROM products p
-    JOIN categories c ON c.category_id = p.category_id
+    JOIN product_categories c ON c.product_category_id = p.product_category_id
     WHERE p.is_active = 1
 ";
 
@@ -37,7 +37,7 @@ if ($search !== '') {
 
 $products = $q->fetchAll();
 $categories = $pdo->query(
-    'SELECT category_id, category_name FROM categories WHERE is_active = 1 ORDER BY category_name'
+    'SELECT product_category_id AS category_id, category_name FROM product_categories WHERE is_active = 1 ORDER BY category_name'
 )->fetchAll();
 $isHome = ($search === '');
 $pageTitle = 'Home';
