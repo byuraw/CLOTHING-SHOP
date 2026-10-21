@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . "/includes/functions.php";
 
-$id = (int) ($_GET['id'] ?? 0);
+$id = (int) ($_GET["id"] ?? 0);
 $s = $pdo->prepare(
     'SELECT p.*,c.category_name,t.type_name
     FROM products p
@@ -14,7 +14,7 @@ $p = $s->fetch();
 
 if (!$p) {
     http_response_code(404);
-    exit('Product not found.');
+    exit("Product not found.");
 }
 
 $v = $pdo->prepare(
@@ -36,16 +36,19 @@ $im = $pdo->prepare(
 $im->execute([$id]);
 $images = $im->fetchAll();
 $image = $images[0] ?? null;
-$reviewError = '';
+$reviewError = "";
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'review') {
+if (
+    $_SERVER["REQUEST_METHOD"] === "POST" &&
+    ($_POST["action"] ?? "") === "review"
+) {
     csrf_check();
     require_login();
-    $rating = (int) ($_POST['rating'] ?? 0);
-    $review = moderate_review(trim($_POST['review_text'] ?? ''));
+    $rating = (int) ($_POST["rating"] ?? 0);
+    $review = moderate_review(trim($_POST["review_text"] ?? ""));
 
-    if ($rating < 1 || $rating > 5 || $review === '') {
-        $reviewError = 'Choose a rating and write a review.';
+    if ($rating < 1 || $rating > 5 || $review === "") {
+        $reviewError = "Choose a rating and write a review.";
     } else {
         $can = $pdo->prepare(
             "SELECT oi.order_item_id
@@ -59,11 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
                 AND os.status_name IN ('Processing','Packed','Shipped','Delivered','Completed')
             LIMIT 1",
         );
-        $can->execute([current_user()['id'], $id]);
+        $can->execute([current_user()["id"], $id]);
         $orderItem = $can->fetchColumn();
 
         if (!$orderItem) {
-            $reviewError = 'You can review this product after purchasing it.';
+            $reviewError = "You can review this product after purchasing it.";
         } else {
             $save = $pdo->prepare(
                 'INSERT INTO product_reviews(product_id,user_id,order_item_id,rating,review_text)
@@ -73,9 +76,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'revie
                     review_text=VALUES(review_text),
                     updated_at=CURRENT_TIMESTAMP',
             );
-            $save->execute([$id, current_user()['id'], $orderItem, $rating, $review]);
-            flash('Review saved.');
-            redirect(APP_BASE . '/product.php?id=' . $id . '#reviews');
+            $save->execute([
+                $id,
+                current_user()["id"],
+                $orderItem,
+                $rating,
+                $review,
+            ]);
+            flash("Review saved.");
+            redirect(APP_BASE . "/product.php?id=" . $id . "#reviews");
         }
     }
 }
@@ -91,17 +100,17 @@ $reviews->execute([$id]);
 $reviews = $reviews->fetchAll();
 
 if (
-    $_SERVER['REQUEST_METHOD'] === 'POST' &&
-    in_array($_POST['action'] ?? '', ['add_to_cart', 'checkout'], true)
+    $_SERVER["REQUEST_METHOD"] === "POST" &&
+    in_array($_POST["action"] ?? "", ["add_to_cart", "checkout"], true)
 ) {
     csrf_check();
     require_login();
-    $variant = (int) ($_POST['variant_id'] ?? 0);
-    $qty = filter_var($_POST['quantity'] ?? null, FILTER_VALIDATE_INT);
-    $action = $_POST['action'];
+    $variant = (int) ($_POST["variant_id"] ?? 0);
+    $qty = filter_var($_POST["quantity"] ?? null, FILTER_VALIDATE_INT);
+    $action = $_POST["action"];
     if ($qty === false || $qty < 1 || $qty > 99) {
-        flash('Choose a quantity between 1 and 99.', 'error');
-        redirect(APP_BASE . '/product.php?id=' . $id);
+        flash("Choose a quantity between 1 and 99.", "error");
+        redirect(APP_BASE . "/product.php?id=" . $id);
     }
     $check = $pdo->prepare(
         'SELECT variant_id,stock_quantity
@@ -112,17 +121,17 @@ if (
     $row = $check->fetch();
 
     if (!$row) {
-        flash('Please select an available option and quantity.', 'error');
-        redirect(APP_BASE . '/product.php?id=' . $id);
+        flash("Please select an available option and quantity.", "error");
+        redirect(APP_BASE . "/product.php?id=" . $id);
     }
     $cartQuantity = $pdo->prepare(
-        'SELECT quantity FROM cart_items WHERE user_id=? AND variant_id=?',
+        "SELECT quantity FROM cart_items WHERE user_id=? AND variant_id=?",
     );
-    $cartQuantity->execute([current_user()['id'], $variant]);
+    $cartQuantity->execute([current_user()["id"], $variant]);
     $alreadyInCart = (int) ($cartQuantity->fetchColumn() ?: 0);
-    if ($qty + $alreadyInCart > (int) $row['stock_quantity']) {
-        flash('The requested quantity exceeds the available stock.', 'error');
-        redirect(APP_BASE . '/product.php?id=' . $id);
+    if ($qty + $alreadyInCart > (int) $row["stock_quantity"]) {
+        flash("The requested quantity exceeds the available stock.", "error");
+        redirect(APP_BASE . "/product.php?id=" . $id);
     }
 
     $up = $pdo->prepare(
@@ -130,19 +139,21 @@ if (
         VALUES(?,?,?)
         ON DUPLICATE KEY UPDATE quantity=quantity+VALUES(quantity)',
     );
-    $up->execute([current_user()['id'], $variant, $qty]);
-    if ($action === 'checkout') {
-        redirect(APP_BASE . '/checkout.php');
+    $up->execute([current_user()["id"], $variant, $qty]);
+    if ($action === "checkout") {
+        redirect(APP_BASE . "/checkout.php");
     }
-    flash('Added to your cart.');
-    redirect(APP_BASE . '/cart.php');
+    flash("Added to your cart.");
+    redirect(APP_BASE . "/cart.php");
 }
 
-$pageTitle = $p['product_name'];
-require __DIR__ . '/includes/header.php';
+$pageTitle = $p["product_name"];
+require __DIR__ . "/includes/header.php";
 ?>
 
-<p><a class="button secondary" href="<?= e(APP_BASE . '/shop.php') ?>">Back to shop</a></p>
+<p><a class="button secondary" href="<?= e(
+    APP_BASE . "/shop.php",
+) ?>">Back to shop</a></p>
 
 <div class="pdp">
     <div class="gallery">
@@ -150,8 +161,8 @@ require __DIR__ . '/includes/header.php';
             <?php if ($image): ?>
                 <img
                     data-main-img
-                    src="<?= APP_BASE . '/' . e($image['image_path']) ?>"
-                    alt="<?= e($image['alt_text'] ?? $p['product_name']) ?>"
+                    src="<?= APP_BASE . "/" . e($image["image_path"]) ?>"
+                    alt="<?= e($image["alt_text"] ?? $p["product_name"]) ?>"
                 />
             <?php else: ?>
                 Product image
@@ -163,12 +174,16 @@ require __DIR__ . '/includes/header.php';
                 <?php foreach ($images as $index => $galleryImage): ?>
                     <button
                         type="button"
-                        data-thumb="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
-                        aria-current="<?= $index === 0 ? 'true' : 'false' ?>"
+                        data-thumb="<?= APP_BASE .
+                            "/" .
+                            e($galleryImage["image_path"]) ?>"
+                        aria-current="<?= $index === 0 ? "true" : "false" ?>"
                         aria-label="Show photo <?= $index + 1 ?>"
                     >
                         <img
-                            src="<?= APP_BASE . '/' . e($galleryImage['image_path']) ?>"
+                            src="<?= APP_BASE .
+                                "/" .
+                                e($galleryImage["image_path"]) ?>"
                             alt=""
                         />
                     </button>
@@ -178,43 +193,63 @@ require __DIR__ . '/includes/header.php';
     </div>
 
     <section class="pdp-info">
-        <div class="eyebrow"><?= e($p['category_name'] . ($p['type_name'] ? ' / ' . $p['type_name'] : '')) ?></div>
-        <h1 class="page-title"><?= e($p['product_name']) ?></h1>
-        <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
-        <p><?= nl2br(e($p['description'] ?? '')) ?></p>
+        <div class="eyebrow"><?= e(
+            $p["category_name"] .
+                ($p["type_name"] ? " / " . $p["type_name"] : ""),
+        ) ?></div>
+        <h1 class="page-title"><?= e($p["product_name"]) ?></h1>
+        <div class="price">₱<?= number_format(
+            (float) $p["base_price"],
+            2,
+        ) ?></div>
+        <p><?= nl2br(e($p["description"] ?? "")) ?></p>
         <?php if ($variants): ?>
             <?php
             $availableSizes = [];
             $availableColors = [];
             $variantOptions = [];
             foreach ($variants as $variantOption) {
-                $sizeKey = (string) ($variantOption['size_id'] ?? 0);
-                $colorKey = (string) ($variantOption['color_id'] ?? 0);
-                $availableSizes[$sizeKey] = $variantOption['size_name'] ?? 'One size';
-                $availableColors[$colorKey] = $variantOption['color_name'] ?? 'Default';
-                $variantOptions[$sizeKey . ':' . $colorKey] = [
-                    'id' => (int) $variantOption['variant_id'],
-                    'stock' => (int) $variantOption['stock_quantity'],
+                $sizeKey = (string) ($variantOption["size_id"] ?? 0);
+                $colorKey = (string) ($variantOption["color_id"] ?? 0);
+                $availableSizes[$sizeKey] =
+                    $variantOption["size_name"] ?? "One size";
+                $availableColors[$colorKey] =
+                    $variantOption["color_name"] ?? "Default";
+                $variantOptions[$sizeKey . ":" . $colorKey] = [
+                    "id" => (int) $variantOption["variant_id"],
+                    "stock" => (int) $variantOption["stock_quantity"],
                 ];
             }
             ?>
             <form method="post" data-variant-options="<?= e(
-                json_encode($variantOptions, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT),
+                json_encode(
+                    $variantOptions,
+                    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT,
+                ),
             ) ?>">
-                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+                <input type="hidden" name="csrf" value="<?= e(
+                    csrf_token(),
+                ) ?>" />
                 <input type="hidden" name="variant_id" value="" />
                 <label for="size-option">Size</label>
                 <select id="size-option" name="size_option" required>
                     <option value="">Select size</option>
                     <?php foreach ($availableSizes as $sizeId => $sizeName): ?>
-                        <option value="<?= e($sizeId) ?>"><?= e($sizeName) ?></option>
+                        <option value="<?= e($sizeId) ?>"><?= e(
+    $sizeName,
+) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <label for="color-option">Color</label>
                 <select id="color-option" name="color_option" required>
                     <option value="">Select color</option>
-                    <?php foreach ($availableColors as $colorId => $colorName): ?>
-                        <option value="<?= e($colorId) ?>"><?= e($colorName) ?></option>
+                    <?php foreach (
+                        $availableColors
+                        as $colorId => $colorName
+                    ): ?>
+                        <option value="<?= e($colorId) ?>"><?= e(
+    $colorName,
+) ?></option>
                     <?php endforeach; ?>
                 </select>
                 <p class="muted" data-variant-stock aria-live="polite">Select a size and color.</p>
@@ -269,12 +304,12 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
     <?php foreach ($reviews as $r): ?>
         <article class="review">
-            <b><?= e($r['first_name'] . ' ' . $r['last_name']) ?></b>
-            <span class="stars" aria-label="<?= (int) $r['rating'] ?> out of 5">
-                <?= str_repeat('★', (int) $r['rating']) ?>
+            <b><?= e($r["first_name"] . " " . $r["last_name"]) ?></b>
+            <span class="stars" aria-label="<?= (int) $r["rating"] ?> out of 5">
+                <?= str_repeat("★", (int) $r["rating"]) ?>
             </span>
-            <p><?= nl2br(e($r['review_text'])) ?></p>
-            <small><?= e($r['created_at']) ?></small>
+            <p><?= nl2br(e($r["review_text"])) ?></p>
+            <small><?= e($r["created_at"]) ?></small>
         </article>
     <?php endforeach; ?>
 
@@ -302,4 +337,4 @@ require __DIR__ . '/includes/header.php';
     <?php endif; ?>
 </section>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . "/includes/footer.php"; ?>

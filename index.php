@@ -1,7 +1,7 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . "/includes/functions.php";
 
-$search = trim($_GET['q'] ?? '');
+$search = trim($_GET["q"] ?? "");
 $base = "
     SELECT
         p.product_id,
@@ -26,46 +26,53 @@ $base = "
     WHERE p.is_active = 1
 ";
 
-if ($search !== '') {
+if ($search !== "") {
     $q = $pdo->prepare(
-        $base . ' AND (p.product_name LIKE ? OR p.description LIKE ?) ORDER BY p.created_at DESC LIMIT 24'
+        $base .
+            " AND (p.product_name LIKE ? OR p.description LIKE ?) ORDER BY p.created_at DESC LIMIT 24",
     );
-    $q->execute(['%' . $search . '%', '%' . $search . '%']);
+    $q->execute(["%" . $search . "%", "%" . $search . "%"]);
 } else {
-    $q = $pdo->query($base . ' ORDER BY p.created_at DESC LIMIT 40');
+    $q = $pdo->query($base . " ORDER BY p.created_at DESC LIMIT 40");
 }
 
 $products = $q->fetchAll();
-$categories = $pdo->query(
-    'SELECT product_category_id AS category_id, category_name FROM product_categories WHERE is_active = 1 ORDER BY category_name'
-)->fetchAll();
-$isHome = ($search === '');
-$pageTitle = 'Home';
+$categories = $pdo
+    ->query(
+        "SELECT product_category_id AS category_id, category_name FROM product_categories WHERE is_active = 1 ORDER BY category_name",
+    )
+    ->fetchAll();
+$isHome = $search === "";
+$pageTitle = "Home";
 $fullWidth = $isHome;
-$bodyClass = $isHome ? 'home' : '';
+$bodyClass = $isHome ? "home" : "";
 
-require __DIR__ . '/includes/header.php';
+require __DIR__ . "/includes/header.php";
 
 // Optional hero photos: drop hero-1.jpg, hero-2.jpg, hero-3.jpg into assets/img/ and they appear automatically.
 function hero_bg(int $n): string
 {
     $f = "assets/img/hero-$n.jpg";
 
-    return is_file(__DIR__ . '/' . $f)
-        ? ' style="background-image:url(' . APP_BASE . '/' . $f . ')"'
-        : '';
+    return is_file(__DIR__ . "/" . $f)
+        ? ' style="background-image:url(' . APP_BASE . "/" . $f . ')"'
+        : "";
 }
 
 function product_card(array $p, bool $hidden = false): void
 {
     ?>
-    <article class="card" data-cat="<?= (int) $p['category_id'] ?>"<?= $hidden ? ' hidden' : '' ?>>
-        <a href="/clothing-store-backup/product.php?id=<?= (int) $p['product_id'] ?>">
+    <article class="card" data-cat="<?= (int) $p[
+        "category_id"
+    ] ?>"<?= $hidden ? " hidden" : "" ?>>
+        <a href="/clothing-store-backup/product.php?id=<?= (int) $p[
+            "product_id"
+        ] ?>">
             <div class="product-image">
-                <?php if ($p['image_path']): ?>
+                <?php if ($p["image_path"]): ?>
                     <img
-                        src="/clothing-store-backup/<?= e($p['image_path']) ?>"
-                        alt="<?= e($p['product_name']) ?>"
+                        src="/clothing-store-backup/<?= e($p["image_path"]) ?>"
+                        alt="<?= e($p["product_name"]) ?>"
                         loading="lazy"
                     >
                 <?php else: ?>
@@ -73,12 +80,17 @@ function product_card(array $p, bool $hidden = false): void
                 <?php endif; ?>
             </div>
             <div class="card-info">
-                <div class="card-cat"><?= e($p['category_name']) ?></div>
-                <h3><?= e($p['product_name']) ?></h3>
-                <div class="price">₱<?= number_format((float) $p['base_price'], 2) ?></div>
-                <?php if ($p['rating']): ?>
-                    <div class="stars" aria-label="Rated <?= (int) $p['rating'] ?> out of 5">
-                        <?= str_repeat('★', (int) $p['rating']) ?>
+                <div class="card-cat"><?= e($p["category_name"]) ?></div>
+                <h3><?= e($p["product_name"]) ?></h3>
+                <div class="price">₱<?= number_format(
+                    (float) $p["base_price"],
+                    2,
+                ) ?></div>
+                <?php if ($p["rating"]): ?>
+                    <div class="stars" aria-label="Rated <?= (int) $p[
+                        "rating"
+                    ] ?> out of 5">
+                        <?= str_repeat("★", (int) $p["rating"]) ?>
                     </div>
                 <?php endif; ?>
             </div>
@@ -134,10 +146,10 @@ function product_card(array $p, bool $hidden = false): void
                     <button
                         type="button"
                         role="tab"
-                        data-tab="<?= (int) $c['category_id'] ?>"
+                        data-tab="<?= (int) $c["category_id"] ?>"
                         aria-selected="false"
                     >
-                        <?= e($c['category_name']) ?>
+                        <?= e($c["category_name"]) ?>
                     </button>
                 <?php endforeach; ?>
             </div>
@@ -156,21 +168,24 @@ function product_card(array $p, bool $hidden = false): void
 
     <?php
     $tiles = array_slice($categories, 0, 4);
-    if (count($tiles) >= 1):
-        ?>
+    if (count($tiles) >= 1): ?>
         <section class="wrap promos" aria-label="Shop by category">
             <?php $t = $tiles[0]; ?>
-            <a class="promo tall a" href="/clothing-store-backup/shop.php?category=<?= (int) $t['category_id'] ?>">
+            <a class="promo tall a" href="/clothing-store-backup/shop.php?category=<?= (int) $t[
+                "category_id"
+            ] ?>">
                 <small>Shop by category</small>
-                <h3><?= e($t['category_name']) ?></h3>
+                <h3><?= e($t["category_name"]) ?></h3>
                 <span class="button">Shop now</span>
             </a>
 
             <?php if (isset($tiles[1])): ?>
                 <?php $t = $tiles[1]; ?>
-                <a class="promo b" href="/clothing-store-backup/shop.php?category=<?= (int) $t['category_id'] ?>">
+                <a class="promo b" href="/clothing-store-backup/shop.php?category=<?= (int) $t[
+                    "category_id"
+                ] ?>">
                     <small>Shop by category</small>
-                    <h3><?= e($t['category_name']) ?></h3>
+                    <h3><?= e($t["category_name"]) ?></h3>
                     <span class="button">Shop now</span>
                 </a>
             <?php endif; ?>
@@ -178,9 +193,11 @@ function product_card(array $p, bool $hidden = false): void
             <div class="promo-bottom">
                 <?php if (isset($tiles[2])): ?>
                     <?php $t = $tiles[2]; ?>
-                    <a class="promo c" href="/clothing-store-backup/shop.php?category=<?= (int) $t['category_id'] ?>">
+                    <a class="promo c" href="/clothing-store-backup/shop.php?category=<?= (int) $t[
+                        "category_id"
+                    ] ?>">
                         <small>Shop by category</small>
-                        <h3><?= e($t['category_name']) ?></h3>
+                        <h3><?= e($t["category_name"]) ?></h3>
                         <span class="button">Shop now</span>
                     </a>
                 <?php endif; ?>
@@ -192,7 +209,8 @@ function product_card(array $p, bool $hidden = false): void
                 </a>
             </div>
         </section>
-    <?php endif; ?>
+    <?php endif;
+    ?>
 <?php else: ?>
     <div class="wrap" style="margin:44px auto">
         <div class="section-head">
@@ -210,4 +228,4 @@ function product_card(array $p, bool $hidden = false): void
     </div>
 <?php endif; ?>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . "/includes/footer.php"; ?>

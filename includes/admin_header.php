@@ -1,34 +1,42 @@
 <?php
-require_once __DIR__ . '/functions.php';
+require_once __DIR__ . "/functions.php";
 
-$pageTitle = $pageTitle ?? 'Dashboard';
-$notice = $_SESSION['flash'] ?? null;
-unset($_SESSION['flash']);
-$here = basename($_SERVER['SCRIPT_NAME'] ?? 'index.php');
-$initial = strtoupper(substr(current_user()['name'] ?? 'A', 0, 1));
+$pageTitle = $pageTitle ?? "Dashboard";
+$notice = $_SESSION["flash"] ?? null;
+unset($_SESSION["flash"]);
+$here = basename($_SERVER["SCRIPT_NAME"] ?? "index.php");
+$initial = strtoupper(substr(current_user()["name"] ?? "A", 0, 1));
 
 $icons = [
-    'dashboard' => '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
-    'catalog' => '<path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/>',
-    'products' => '<path d="M6 2l1 5h10l1-5"/><path d="M4 7h16l-1.5 13a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2L4 7z"/>',
-    'inventory' => '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 10h18"/>',
-    'orders' => '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.6 13.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21 7H6"/>',
-    'users' => '<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
-    'expenses' => '<path d="M3 20h18"/><path d="M6 20V10M12 20V4M18 20V14"/>',
-    'reports' => '<path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 19v-6M13 19v-9M18 19v-4"/>',
-    'store' => '<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
-    'out' => '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
+    "dashboard" =>
+        '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
+    "catalog" =>
+        '<path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/>',
+    "products" =>
+        '<path d="M6 2l1 5h10l1-5"/><path d="M4 7h16l-1.5 13a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2L4 7z"/>',
+    "inventory" =>
+        '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 10h18"/>',
+    "orders" =>
+        '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.6 13.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21 7H6"/>',
+    "users" =>
+        '<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
+    "expenses" => '<path d="M3 20h18"/><path d="M6 20V10M12 20V4M18 20V14"/>',
+    "reports" =>
+        '<path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 19v-6M13 19v-9M18 19v-4"/>',
+    "store" => '<path d="M3 10l9-7 9 7v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/>',
+    "out" =>
+        '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>',
 ];
 
 $links = [
-    'index.php' => ['Dashboard', 'dashboard'],
-    'catalog.php' => ['Catalog', 'catalog'],
-    'products.php' => ['Products', 'products'],
-    'inventory.php' => ['Inventory', 'inventory'],
-    'orders.php' => ['Orders', 'orders'],
-    'users.php' => ['Customers', 'users'],
-    'expenses.php' => ['Expenses', 'expenses'],
-    'reports.php' => ['Reports', 'reports'],
+    "index.php" => ["Dashboard", "dashboard"],
+    "catalog.php" => ["Catalog", "catalog"],
+    "products.php" => ["Products", "products"],
+    "inventory.php" => ["Inventory", "inventory"],
+    "orders.php" => ["Orders", "orders"],
+    "users.php" => ["Customers", "users"],
+    "expenses.php" => ["Expenses", "expenses"],
+    "reports.php" => ["Reports", "reports"],
 ];
 ?>
 <!doctype html>
@@ -60,9 +68,13 @@ $links = [
             <?php foreach ($links as $file => [$label, $icon]): ?>
                 <a
                     href="<?= APP_BASE ?>/admin/<?= e($file) ?>"
-                    <?= $here === $file ? 'class="active" aria-current="page"' : '' ?>
+                    <?= $here === $file
+                        ? 'class="active" aria-current="page"'
+                        : "" ?>
                 >
-                    <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icons[$icon] ?></svg>
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icons[
+                        $icon
+                    ] ?></svg>
                     <?= e($label) ?>
                 </a>
             <?php endforeach; ?>
@@ -70,11 +82,15 @@ $links = [
         <div class="spacer"></div>
         <nav aria-label="Account">
             <a href="<?= APP_BASE ?>/index.php">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icons['store'] ?></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icons[
+                    "store"
+                ] ?></svg>
                 View store
             </a>
             <a href="<?= APP_BASE ?>/user/logout.php">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icons['out'] ?></svg>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><?= $icons[
+                    "out"
+                ] ?></svg>
                 Sign out
             </a>
         </nav>
@@ -94,18 +110,24 @@ $links = [
                 <button type="button" class="icon-btn" aria-label="Messages">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </button>
-                <div class="avatar" title="<?= e(current_user()['name'] ?? '') ?>"><?= e($initial) ?></div>
+                <div class="avatar" title="<?= e(
+                    current_user()["name"] ?? "",
+                ) ?>"><?= e($initial) ?></div>
             </div>
         </header>
         <div class="content">
             <div class="crumb">
                 <a href="<?= APP_BASE ?>/index.php">Home</a> /
-                <?php if ($here === 'index.php'): ?>
+                <?php if ($here === "index.php"): ?>
                     Dashboard
                 <?php else: ?>
-                    <a href="<?= APP_BASE ?>/admin/index.php">Dashboard</a> / <?= e($pageTitle) ?>
+                    <a href="<?= APP_BASE ?>/admin/index.php">Dashboard</a> / <?= e(
+    $pageTitle,
+) ?>
                 <?php endif; ?>
             </div>
             <?php if ($notice): ?>
-                <div class="notice <?= e($notice[1]) ?>"><?= e($notice[0]) ?></div>
+                <div class="notice <?= e($notice[1]) ?>"><?= e(
+    $notice[0],
+) ?></div>
             <?php endif; ?>

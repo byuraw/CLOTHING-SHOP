@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/../includes/functions.php';
+require_once __DIR__ . "/../includes/functions.php";
 require_admin();
 
 $paidStatuses = "('Processing','Packed','Shipped','Delivered','Completed')";
@@ -13,7 +13,7 @@ $newOrders = (int) $pdo
     )
     ->fetchColumn();
 $products = (int) $pdo
-    ->query('SELECT COUNT(*) FROM products WHERE is_active=1')
+    ->query("SELECT COUNT(*) FROM products WHERE is_active=1")
     ->fetchColumn();
 $customers = (int) $pdo
     ->query(
@@ -24,30 +24,30 @@ $customers = (int) $pdo
     )
     ->fetchColumn();
 
-$firstMonth = new DateTimeImmutable('first day of this month');
-$from = $firstMonth->modify('-6 months')->format('Y-m-01');
+$firstMonth = new DateTimeImmutable("first day of this month");
+$from = $firstMonth->modify("-6 months")->format("Y-m-01");
 $salesQuery = $pdo->prepare(
     "SELECT o.placed_at,o.total_amount
     FROM orders o
     JOIN order_statuses s ON s.order_status_id=o.order_status_id
     WHERE s.status_name IN $paidStatuses AND o.placed_at>=?",
 );
-$salesQuery->execute([$from . ' 00:00:00']);
+$salesQuery->execute([$from . " 00:00:00"]);
 $months = [];
 
 for ($i = 6; $i >= 0; $i--) {
     $month = $firstMonth->modify("-$i months");
-    $months[$month->format('Y-m')] = 0.0;
+    $months[$month->format("Y-m")] = 0.0;
 }
 
 foreach ($salesQuery->fetchAll() as $sale) {
-    $key = substr((string) $sale['placed_at'], 0, 7);
+    $key = substr((string) $sale["placed_at"], 0, 7);
     if (array_key_exists($key, $months)) {
-        $months[$key] += (float) $sale['total_amount'];
+        $months[$key] += (float) $sale["total_amount"];
     }
 }
 
-$salesThisMonth = $months[date('Y-m')] ?? 0.0;
+$salesThisMonth = $months[date("Y-m")] ?? 0.0;
 $maxSales = max($months);
 $pointCount = count($months);
 $points = [];
@@ -57,15 +57,15 @@ foreach ($months as $month => $amount) {
     $x = round($index * (560 / ($pointCount - 1)), 1);
     $y = $maxSales > 0 ? round(160 - ($amount / $maxSales) * 130, 1) : 160;
     $points[] = [
-        'x' => $x,
-        'y' => $y,
-        'label' => date('M', strtotime($month . '-01')),
+        "x" => $x,
+        "y" => $y,
+        "label" => date("M", strtotime($month . "-01")),
     ];
 }
 
 $linePoints = implode(
-    ' ',
-    array_map(static fn ($point) => $point['x'] . ',' . $point['y'], $points),
+    " ",
+    array_map(static fn($point) => $point["x"] . "," . $point["y"], $points),
 );
 
 $lowStock = $pdo
@@ -91,32 +91,32 @@ $recentOrders = $pdo
     )
     ->fetchAll();
 
-$pageTitle = 'Dashboard';
-require __DIR__ . '/../includes/admin_header.php';
+$pageTitle = "Dashboard";
+require __DIR__ . "/../includes/admin_header.php";
 
 $cards = [
     [
         $newOrders,
-        'New orders',
-        '#3a6794',
+        "New orders",
+        "#3a6794",
         '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.6 13.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21 7H6"/>',
     ],
     [
-        '₱' . number_format($salesThisMonth),
-        'Sales this month',
-        '#2b5079',
+        "₱" . number_format($salesThisMonth),
+        "Sales this month",
+        "#2b5079",
         '<path d="M3 17l6-6 4 4 7-8"/>',
     ],
     [
         $products,
-        'Active products',
-        '#7a7d82',
+        "Active products",
+        "#7a7d82",
         '<path d="M6 2l1 5h10l1-5"/><path d="M4 7h16l-1.5 13a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2L4 7z"/>',
     ],
     [
         $customers,
-        'Customers',
-        '#a33a2f',
+        "Customers",
+        "#a33a2f",
         '<circle cx="12" cy="8" r="3.4"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/>',
     ],
 ];
@@ -158,7 +158,7 @@ $cards = [
         </svg>
         <div style="display:flex;justify-content:space-between;font-size:10.5px;color:#7a7d82;margin-top:6px">
             <?php foreach ($points as $point): ?>
-                <span><?= e($point['label']) ?></span>
+                <span><?= e($point["label"]) ?></span>
             <?php endforeach; ?>
         </div>
     </article>
@@ -169,17 +169,25 @@ $cards = [
             <p class="empty-note">Every active item has more than 5 in stock.</p>
         <?php endif; ?>
         <?php foreach ($lowStock as $item): ?>
-            <?php $quantity = (int) $item['stock_quantity']; ?>
+            <?php $quantity = (int) $item["stock_quantity"]; ?>
             <div class="chat-msg">
-                <div class="chat-av"<?= $quantity === 0 ? ' style="background:#f6e3e1;color:#a33a2f"' : '' ?>>
+                <div class="chat-av"<?= $quantity === 0
+                    ? ' style="background:#f6e3e1;color:#a33a2f"'
+                    : "" ?>>
                     <?= $quantity ?>
                 </div>
                 <div>
-                    <div class="chat-name"><?= e($item['product_name']) ?></div>
+                    <div class="chat-name"><?= e($item["product_name"]) ?></div>
                     <div class="chat-txt">
-                        <?= e(($item['size_name'] ?? 'One size') . ' / ' . ($item['color_name'] ?? 'Default')) ?>
+                        <?= e(
+                            ($item["size_name"] ?? "One size") .
+                                " / " .
+                                ($item["color_name"] ?? "Default"),
+                        ) ?>
                         &middot;
-                        <?= $quantity === 0 ? 'Out of stock' : $quantity . ' left' ?>
+                        <?= $quantity === 0
+                            ? "Out of stock"
+                            : $quantity . " left" ?>
                     </div>
                 </div>
             </div>
@@ -204,16 +212,29 @@ $cards = [
             <tbody>
                 <?php foreach ($recentOrders as $order): ?>
                     <?php
-                    $status = $order['status_name'];
-                    $statusClass = in_array($status, ['Delivered', 'Completed'], true)
-                        ? 'b-done'
-                        : ($status === 'Cancelled' ? 'b-cancel' : 'b-pend');
+                    $status = $order["status_name"];
+                    $statusClass = in_array(
+                        $status,
+                        ["Delivered", "Completed"],
+                        true,
+                    )
+                        ? "b-done"
+                        : ($status === "Cancelled"
+                            ? "b-cancel"
+                            : "b-pend");
                     ?>
                     <tr>
-                        <td><?= e($order['order_number']) ?></td>
-                        <td><?= e($order['first_name'] . ' ' . $order['last_name']) ?></td>
-                        <td>₱<?= number_format((float) $order['total_amount'], 2) ?></td>
-                        <td><span class="badge <?= e($statusClass) ?>"><?= e($status) ?></span></td>
+                        <td><?= e($order["order_number"]) ?></td>
+                        <td><?= e(
+                            $order["first_name"] . " " . $order["last_name"],
+                        ) ?></td>
+                        <td>₱<?= number_format(
+                            (float) $order["total_amount"],
+                            2,
+                        ) ?></td>
+                        <td><span class="badge <?= e($statusClass) ?>"><?= e(
+    $status,
+) ?></span></td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
@@ -221,4 +242,4 @@ $cards = [
     <?php endif; ?>
 </section>
 
-<?php require __DIR__ . '/../includes/admin_footer.php'; ?>
+<?php require __DIR__ . "/../includes/admin_footer.php"; ?>

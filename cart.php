@@ -1,24 +1,28 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . "/includes/functions.php";
 require_login();
 csrf_check();
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $id = (int) ($_POST['cart_item_id'] ?? 0);
-    $action = $_POST['action'] ?? '';
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $id = (int) ($_POST["cart_item_id"] ?? 0);
+    $action = $_POST["action"] ?? "";
 
-    if ($action === 'remove') {
-        $q = $pdo->prepare('DELETE FROM cart_items WHERE cart_item_id=? AND user_id=?');
-        $q->execute([$id, current_user()['id']]);
-        flash('Item removed.');
-    } elseif ($action === 'update') {
-        $qty = max(1, min(99, (int) ($_POST['quantity'] ?? 1)));
-        $q = $pdo->prepare('UPDATE cart_items SET quantity=? WHERE cart_item_id=? AND user_id=?');
-        $q->execute([$qty, $id, current_user()['id']]);
-        flash('Cart updated.');
+    if ($action === "remove") {
+        $q = $pdo->prepare(
+            "DELETE FROM cart_items WHERE cart_item_id=? AND user_id=?",
+        );
+        $q->execute([$id, current_user()["id"]]);
+        flash("Item removed.");
+    } elseif ($action === "update") {
+        $qty = max(1, min(99, (int) ($_POST["quantity"] ?? 1)));
+        $q = $pdo->prepare(
+            "UPDATE cart_items SET quantity=? WHERE cart_item_id=? AND user_id=?",
+        );
+        $q->execute([$qty, $id, current_user()["id"]]);
+        flash("Cart updated.");
     }
 
-    redirect('/clothing-store-backup/cart.php');
+    redirect("/clothing-store-backup/cart.php");
 }
 
 $q = $pdo->prepare(
@@ -31,16 +35,16 @@ $q = $pdo->prepare(
     WHERE ci.user_id=?
     ORDER BY ci.added_at DESC',
 );
-$q->execute([current_user()['id']]);
+$q->execute([current_user()["id"]]);
 $items = $q->fetchAll();
 $total = 0;
 
 foreach ($items as $i) {
-    $total += (float) $i['price'] * (int) $i['quantity'];
+    $total += (float) $i["price"] * (int) $i["quantity"];
 }
 
-$pageTitle = 'Your cart';
-require __DIR__ . '/includes/header.php';
+$pageTitle = "Your cart";
+require __DIR__ . "/includes/header.php";
 ?>
 
 <h1 class="page-title">Your cart</h1>
@@ -65,19 +69,25 @@ require __DIR__ . '/includes/header.php';
                 <?php foreach ($items as $i): ?>
                     <tr>
                         <td>
-                            <?= e($i['product_name']) ?>
+                            <?= e($i["product_name"]) ?>
                             <div class="muted">
-                                <?= e(($i['size_name'] ?? 'One size') . ' / ' . ($i['color_name'] ?? 'Default')) ?>
+                                <?= e(
+                                    ($i["size_name"] ?? "One size") .
+                                        " / " .
+                                        ($i["color_name"] ?? "Default"),
+                                ) ?>
                             </div>
                         </td>
-                        <td>₱<?= number_format((float) $i['price'], 2) ?></td>
+                        <td>₱<?= number_format((float) $i["price"], 2) ?></td>
                         <td>
                             <form method="post" class="row">
-                                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+                                <input type="hidden" name="csrf" value="<?= e(
+                                    csrf_token(),
+                                ) ?>" />
                                 <input
                                     type="hidden"
                                     name="cart_item_id"
-                                    value="<?= (int) $i['cart_item_id'] ?>"
+                                    value="<?= (int) $i["cart_item_id"] ?>"
                                 />
                                 <input type="hidden" name="action" value="update" />
                                 <input
@@ -85,25 +95,27 @@ require __DIR__ . '/includes/header.php';
                                     type="number"
                                     name="quantity"
                                     min="1"
-                                    max="<?= (int) $i['stock_quantity'] ?>"
-                                    value="<?= (int) $i['quantity'] ?>"
+                                    max="<?= (int) $i["stock_quantity"] ?>"
+                                    value="<?= (int) $i["quantity"] ?>"
                                 />
                                 <button>Update</button>
                             </form>
                         </td>
                         <td>
                             ₱<?= number_format(
-                                (float) $i['price'] * (int) $i['quantity'],
+                                (float) $i["price"] * (int) $i["quantity"],
                                 2,
                             ) ?>
                         </td>
                         <td>
                             <form method="post">
-                                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
+                                <input type="hidden" name="csrf" value="<?= e(
+                                    csrf_token(),
+                                ) ?>" />
                                 <input
                                     type="hidden"
                                     name="cart_item_id"
-                                    value="<?= (int) $i['cart_item_id'] ?>"
+                                    value="<?= (int) $i["cart_item_id"] ?>"
                                 />
                                 <input type="hidden" name="action" value="remove" />
                                 <button class="secondary">Remove</button>
@@ -121,4 +133,4 @@ require __DIR__ . '/includes/header.php';
     <a class="button" href="/clothing-store-backup/checkout.php">Continue to checkout</a>
 <?php endif; ?>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . "/includes/footer.php"; ?>

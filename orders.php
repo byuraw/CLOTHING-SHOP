@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/includes/functions.php';
+require_once __DIR__ . "/includes/functions.php";
 require_login();
 
 $s = $pdo->prepare(
@@ -9,10 +9,10 @@ $s = $pdo->prepare(
     WHERE o.user_id=?
     ORDER BY o.placed_at DESC',
 );
-$s->execute([current_user()['id']]);
+$s->execute([current_user()["id"]]);
 $orders = $s->fetchAll();
-$pageTitle = 'My orders';
-require __DIR__ . '/includes/header.php';
+$pageTitle = "My orders";
+require __DIR__ . "/includes/header.php";
 ?>
 
 <h1 class="page-title">My orders</h1>
@@ -36,12 +36,17 @@ require __DIR__ . '/includes/header.php';
             <tbody>
                 <?php foreach ($orders as $o): ?>
                     <tr>
-                        <td><?= e($o['order_number']) ?></td>
-                        <td><?= e($o['placed_at']) ?></td>
-                        <td><?= e($o['status_name']) ?></td>
-                        <td>₱<?= number_format((float) $o['total_amount'], 2) ?></td>
+                        <td><?= e($o["order_number"]) ?></td>
+                        <td><?= e($o["placed_at"]) ?></td>
+                        <td><?= e($o["status_name"]) ?></td>
+                        <td>₱<?= number_format(
+                            (float) $o["total_amount"],
+                            2,
+                        ) ?></td>
                         <td>
-                            <a href="/clothing-store-backup/order-details.php?id=<?= (int) $o['order_id'] ?>">
+                            <a href="/clothing-store-backup/order-details.php?id=<?= (int) $o[
+                                "order_id"
+                            ] ?>">
                                 Details
                             </a>
                         </td>
@@ -52,4 +57,4 @@ require __DIR__ . '/includes/header.php';
     </div>
 <?php endif; ?>
 
-<?php require __DIR__ . '/includes/footer.php'; ?>
+<?php require __DIR__ . "/includes/footer.php"; ?>
