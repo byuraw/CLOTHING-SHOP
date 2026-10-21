@@ -96,6 +96,7 @@ require __DIR__ . '/includes/header.php';
 <div class="section-head">
     <h1 class="page-title">Shop</h1>
 </div>
+<p><a class="button secondary" href="<?= e(APP_BASE . '/index.php') ?>">Back to home</a></p>
 <form method="get" class="row">
     <div class="shop-search-field">
         <input name="q" value="<?= e($term) ?>" placeholder="Search clothing" aria-label="Search clothing" />

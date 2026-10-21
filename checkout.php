@@ -163,6 +163,12 @@ $q = $pdo->prepare(
 );
 $q->execute([current_user()['id']]);
 $items = $q->fetchAll();
+$addressQuery = $pdo->prepare(
+    'SELECT recipient_name,phone,address_line1,city,province,postal_code
+    FROM addresses WHERE user_id=? ORDER BY is_default DESC,address_id DESC LIMIT 1',
+);
+$addressQuery->execute([current_user()['id']]);
+$deliveryAddress = $addressQuery->fetch() ?: [];
 $total = 0;
 
 foreach ($items as $i) {
@@ -196,7 +202,7 @@ require __DIR__ . '/includes/header.php';
             ):
                 ?>
                 <label><?= e($label) ?></label>
-                <input name="<?= e($key) ?>" />
+                <input name="<?= e($key) ?>" value="<?= e($deliveryAddress[$key] ?? '') ?>" />
             <?php endforeach; ?>
 
             <label>Payment method</label>

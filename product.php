@@ -142,6 +142,8 @@ $pageTitle = $p['product_name'];
 require __DIR__ . '/includes/header.php';
 ?>
 
+<p><a class="button secondary" href="<?= e(APP_BASE . '/shop.php') ?>">Back to shop</a></p>
+
 <div class="pdp">
     <div class="gallery">
         <div class="product-image">
