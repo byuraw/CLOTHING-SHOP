@@ -2,11 +2,6 @@ CREATE DATABASE IF NOT EXISTS clothing_store_fixed CHARACTER SET utf8mb4 COLLATE
 
 USE clothing_store_fixed;
 
-CREATE TABLE roles (
-    role_id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    role_name VARCHAR(30) NOT NULL UNIQUE
-) ENGINE = InnoDB;
-
 CREATE TABLE account_statuses (
     status_id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     status_name VARCHAR(30) NOT NULL UNIQUE
@@ -14,7 +9,7 @@ CREATE TABLE account_statuses (
 
 CREATE TABLE users (
     user_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    role_id TINYINT UNSIGNED NOT NULL,
+    role_name ENUM('Customer', 'Admin') NOT NULL DEFAULT 'Customer',
     status_id TINYINT UNSIGNED NOT NULL,
     username VARCHAR(50) NULL UNIQUE,
     first_name VARCHAR(80) NOT NULL,
@@ -25,7 +20,6 @@ CREATE TABLE users (
     profile_photo VARCHAR(255) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT fk_users_role FOREIGN KEY (role_id) REFERENCES roles (role_id),
     CONSTRAINT fk_users_status FOREIGN KEY (status_id) REFERENCES account_statuses (status_id)
 ) ENGINE = InnoDB;
 
@@ -247,12 +241,6 @@ CREATE TABLE expenses (
 ) ENGINE = InnoDB;
 
 INSERT INTO
-    roles (role_name)
-VALUES
-    ('Customer'),
-    ('Admin');
-
-INSERT INTO
     account_statuses (status_name)
 VALUES
     ('Active'),
@@ -265,7 +253,7 @@ INSERT INTO
         last_name,
         email,
         password_hash,
-        role_id,
+        role_name,
         status_id
     )
 SELECT
@@ -274,14 +262,12 @@ SELECT
     'Account',
     'admin@example.com',
     '$2y$10$.swgQnJFoU16vz1MuG5R5uAFsDRhHdNiqSsm9JfgbZza8ZCOUklhm',
-    r.role_id,
+    'Admin',
     s.status_id
 FROM
-    roles r
-    CROSS JOIN account_statuses s
+    account_statuses s
 WHERE
-    r.role_name = 'Admin'
-    AND s.status_name = 'Active'
+    s.status_name = 'Active'
     AND NOT EXISTS (
         SELECT
             1

@@ -19,8 +19,7 @@ $customers = (int) $pdo
     ->query(
         "SELECT COUNT(*)
         FROM users u
-        JOIN roles r ON r.role_id=u.role_id
-        WHERE r.role_name='Customer'",
+        WHERE u.role_name='Customer'",
     )
     ->fetchColumn();
 

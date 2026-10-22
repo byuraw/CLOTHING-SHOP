@@ -21,9 +21,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             "Enter your name, a valid email, and a password of at least 8 characters.";
     } else {
         try {
-            $r = $pdo
-                ->query("SELECT role_id FROM roles WHERE role_name='Customer'")
-                ->fetchColumn();
             $st = $pdo
                 ->query(
                     "SELECT status_id FROM account_statuses WHERE status_name='Active'",
@@ -31,7 +28,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ->fetchColumn();
             $photo = upload_image($_FILES["profile_photo"] ?? [], "profiles");
             $q = $pdo->prepare(
-                "INSERT INTO users(first_name,last_name,email,password_hash,phone,profile_photo,role_id,status_id) VALUES(?,?,?,?,?,?,?,?)",
+                "INSERT INTO users(first_name,last_name,email,password_hash,phone,profile_photo,role_name,status_id) VALUES(?,?,?,?,?,?,?,?)",
             );
             $q->execute([
                 $first,
@@ -40,7 +37,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 password_hash($password, PASSWORD_DEFAULT),
                 $phone ?: null,
                 $photo,
-                $r,
+                "Customer",
                 $st,
             ]);
             flash("Account created. You can now sign in.");

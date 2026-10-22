@@ -16,9 +16,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "Enter your email address and password.";
     } else {
         $q = $pdo->prepare(
-            'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,r.role_name,s.status_name 
+            'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,u.role_name,s.status_name
             FROM users u 
-            JOIN roles r ON r.role_id=u.role_id 
             JOIN account_statuses s ON s.status_id=u.status_id 
             WHERE u.email=?',
         );

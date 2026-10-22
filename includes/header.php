@@ -197,17 +197,19 @@ $isAdminPage =
                     <?php else: ?>
                         <a href="/clothing-store-backup/user/login.php">Sign in</a>
                     <?php endif; ?>
-                    <button
-                        type="button"
-                        class="icon-btn"
-                        data-search-toggle
-                        aria-label="Search products"
-                    >
-                        <svg viewBox="0 0 24 24">
-                            <circle cx="11" cy="11" r="7"/>
-                            <path d="m20 20-3.5-3.5"/>
-                        </svg>
-                    </button>
+                    <?php if ($currentAdminPage !== "index.php"): ?>
+                        <button
+                            type="button"
+                            class="icon-btn"
+                            data-search-toggle
+                            aria-label="Search products"
+                        >
+                            <svg viewBox="0 0 24 24">
+                                <circle cx="11" cy="11" r="7"/>
+                                <path d="m20 20-3.5-3.5"/>
+                            </svg>
+                        </button>
+                    <?php endif; ?>
                     <a
                         class="icon-btn"
                         href="/clothing-store-backup/user/profile.php"

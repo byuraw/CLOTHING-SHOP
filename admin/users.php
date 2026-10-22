@@ -18,9 +18,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $s->execute([$status, $id]);
                 flash("User status updated.");
             } elseif ($action === "role") {
-                $role = (int) ($_POST["role_id"] ?? 0);
+                $role = $_POST["role_name"] ?? "";
+                if (!in_array($role, ["Admin", "Customer"], true)) {
+                    throw new InvalidArgumentException("Choose a valid user role.");
+                }
                 $s = $pdo->prepare(
-                    "UPDATE users SET role_id=? WHERE user_id=?",
+                    "UPDATE users SET role_name=? WHERE user_id=?",
                 );
                 $s->execute([$role, $id]);
                 flash("User role updated.");
@@ -48,12 +51,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 $users = $pdo
     ->query(
-        "SELECT u.user_id,u.first_name,u.last_name,u.email,u.created_at,u.status_id,u.role_id,s.status_name,r.role_name FROM users u JOIN account_statuses s ON s.status_id=u.status_id JOIN roles r ON r.role_id=u.role_id ORDER BY u.created_at DESC",
+        "SELECT u.user_id,u.first_name,u.last_name,u.email,u.created_at,u.status_id,u.role_name,s.status_name FROM users u JOIN account_statuses s ON s.status_id=u.status_id ORDER BY u.created_at DESC",
     )
     ->fetchAll();
-$roles = $pdo
-    ->query("SELECT role_id,role_name FROM roles ORDER BY role_name")
-    ->fetchAll();
+$roles = ["Admin", "Customer"];
 $statuses = $pdo
     ->query(
         "SELECT status_id,status_name FROM account_statuses ORDER BY status_name",
@@ -120,15 +121,15 @@ require __DIR__ . "/../includes/admin_header.php";
             ) ?>" /><input type="hidden" name="user_id" value="<?= (int) $u[
     "user_id"
 ] ?>" /><input type="hidden" name="action" value="role" /><select
-              name="role_id"
+              name="role_name"
             >
-              <?php foreach ($roles as $r): ?>
+              <?php foreach ($roles as $role): ?>
 
-              <option value="<?= (int) $r["role_id"] ?>" <?= (int) $u[
-    "role_id"
-] === (int) $r["role_id"]
+              <option value="<?= e($role) ?>" <?= $u[
+    "role_name"
+] === $role
     ? "selected"
-    : "" ?>><?= e($r["role_name"]) ?></option>
+    : "" ?>><?= e($role) ?></option>
               <?php endforeach; ?></select
             ><button>Save role</button>
           </form>
