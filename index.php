@@ -49,14 +49,9 @@ $bodyClass = $isHome ? "home" : "";
 
 require __DIR__ . "/includes/header.php";
 
-// Optional hero photos: drop hero-1.jpg, hero-2.jpg, hero-3.jpg into assets/img/ and they appear automatically.
-function hero_bg(int $n): string
+function hero_image(int $n): string
 {
-    $f = "assets/img/hero-$n.jpg";
-
-    return is_file(__DIR__ . "/" . $f)
-        ? ' style="background-image:url(' . APP_BASE . "/" . $f . ')"'
-        : "";
+    return APP_BASE . "/uploads/clothing-store-model($n).png";
 }
 
 function product_card(array $p, bool $hidden = false): void
@@ -102,25 +97,28 @@ function product_card(array $p, bool $hidden = false): void
 
 <?php if ($isHome): ?>
     <section class="hero-slider" aria-roledescription="carousel" aria-label="Featured">
-        <div class="hero-slide active" aria-hidden="false"<?= hero_bg(1) ?>>
+        <div class="hero-slide active" aria-hidden="false">
+            <img class="hero-image" src="<?= e(hero_image(1)) ?>" alt="" aria-hidden="true">
             <div class="hero-copy">
-                <small>Everyday pieces</small>
-                <h1>Comfort that works all day</h1>
-                <a class="button light" href="/clothing-store-backup/shop.php">Shop collection</a>
+                <small>New season collection</small>
+                <h1>Style made for every day</h1>
+                <a class="button light" href="/clothing-store-backup/shop.php">Discover now</a>
             </div>
         </div>
-        <div class="hero-slide" aria-hidden="true"<?= hero_bg(2) ?>>
+        <div class="hero-slide" aria-hidden="true">
+            <img class="hero-image" src="<?= e(hero_image(2)) ?>" alt="" aria-hidden="true">
             <div class="hero-copy">
-                <small>New in</small>
-                <h2>The latest pieces in the shop</h2>
-                <a class="button light" href="#new">See new arrivals</a>
+                <small>Made to move</small>
+                <h2>Find your new favorites</h2>
+                <a class="button light" href="#new">Shop new arrivals</a>
             </div>
         </div>
-        <div class="hero-slide" aria-hidden="true"<?= hero_bg(3) ?>>
+        <div class="hero-slide" aria-hidden="true">
+            <img class="hero-image" src="<?= e(hero_image(3)) ?>" alt="" aria-hidden="true">
             <div class="hero-copy">
-                <small>Delivery</small>
-                <h2>Free shipping on every order</h2>
-                <a class="button light" href="/clothing-store-backup/shop.php">Start shopping</a>
+                <small>Everyday essentials</small>
+                <h2>Make room for more style</h2>
+                <a class="button light" href="/clothing-store-backup/shop.php">Shop the collection</a>
             </div>
         </div>
         <button type="button" class="hero-arrow prev" aria-label="Previous slide">

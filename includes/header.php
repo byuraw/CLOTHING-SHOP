@@ -25,7 +25,12 @@ $isAdminPage =
             href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&family=Playfair+Display:wght@700&display=swap"
             rel="stylesheet"
         >
-        <link rel="stylesheet" href="/clothing-store-backup/assets/css/style.css">
+        <link
+            rel="stylesheet"
+            href="/clothing-store-backup/assets/css/style.css?v=<?= filemtime(
+                __DIR__ . "/../assets/css/style.css",
+            ) ?>"
+        >
     </head>
     <body class="<?= e(
         trim($bodyClass . ($isAdminPage ? " admin-body" : "")),

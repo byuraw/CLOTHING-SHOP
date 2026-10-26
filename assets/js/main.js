@@ -34,6 +34,9 @@
                 show(cur + 1);
             });
         show(0);
+        window.setInterval(function () {
+            show(cur + 1);
+        }, 3000);
     }
 
     // New-arrivals category tabs

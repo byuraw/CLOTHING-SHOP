@@ -17,4 +17,6 @@
     "Y",
 ) ?> Wearwell Clothing</div></footer>
 <?php endif; ?>
-<script src="/clothing-store-backup/assets/js/main.js"></script></body></html>
+<script src="/clothing-store-backup/assets/js/main.js?v=<?= filemtime(
+    __DIR__ . "/../assets/js/main.js",
+) ?>"></script></body></html>
