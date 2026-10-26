@@ -353,6 +353,63 @@ th {
     max-width: 640px;
     margin: 0;
 }
+.product-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid #e6e6e6;
+}
+.product-tabs .product-tab {
+    margin-bottom: -1px;
+    padding: 11px 16px;
+    background: transparent;
+    color: #7a7d82;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+}
+.product-tabs .product-tab:hover {
+    background: #f0f0f0;
+    color: #1d1f22;
+}
+.product-tabs .product-tab.active {
+    color: #2b5079;
+    border-bottom-color: #3a6794;
+}
+.product-tab-panel[hidden] {
+    display: none;
+}
+.product-tab-panel > .form-card {
+    width: 100%;
+}
+.update-product-toolbar {
+    display: flex;
+    justify-content: flex-end;
+}
+.update-product-toolbar .search {
+    flex: 0 1 420px;
+}
+.product-edit-form {
+    width: 100%;
+    max-width: none;
+}
+.product-edit-form p {
+    margin: 0;
+    color: #7a7d82;
+    font-size: 13px;
+}
+.selected-product-row {
+    background: #eef4fa;
+}
+#update-product-panel tr[data-selectable-product] {
+    cursor: pointer;
+}
+#update-product-panel tr[data-selectable-product]:hover {
+    background: #f3f6f9;
+}
+#update-product-panel tr[data-selectable-product]:focus-visible {
+    outline: 2px solid #3a6794;
+    outline-offset: -2px;
+}
 .form-card h2,
 .form-card h3 {
     margin: 0 0 6px;

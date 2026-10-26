@@ -23,7 +23,7 @@ $base = "
         ) AS rating
     FROM products p
     JOIN product_categories c ON c.product_category_id = p.product_category_id
-    WHERE p.is_active = 1
+    WHERE p.is_active = 1 AND c.is_active = 1
 ";
 
 if ($search !== "") {

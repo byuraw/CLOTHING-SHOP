@@ -14,8 +14,6 @@ $icons = [
         '<path d="M4 7l8-4 8 4-8 4-8-4z"/><path d="M4 7v10l8 4 8-4V7"/>',
     "products" =>
         '<path d="M6 2l1 5h10l1-5"/><path d="M4 7h16l-1.5 13a2 2 0 0 1-2 2H7.5a2 2 0 0 1-2-2L4 7z"/>',
-    "inventory" =>
-        '<rect x="3" y="4" width="18" height="16" rx="1"/><path d="M3 10h18"/>',
     "orders" =>
         '<circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2 3h2l2.6 13.2a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 2-1.6L21 7H6"/>',
     "users" =>
@@ -32,7 +30,6 @@ $links = [
     "index.php" => ["Dashboard", "dashboard"],
     "catalog.php" => ["Catalog", "catalog"],
     "products.php" => ["Products", "products"],
-    "inventory.php" => ["Inventory", "inventory"],
     "orders.php" => ["Orders", "orders"],
     "users.php" => ["Customers", "users"],
     "expenses.php" => ["Expenses", "expenses"],
@@ -51,7 +48,12 @@ $links = [
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&display=swap"
         rel="stylesheet"
     >
-    <link rel="stylesheet" href="<?= APP_BASE ?>/assets/css/admin.css">
+    <link
+        rel="stylesheet"
+        href="<?= APP_BASE ?>/assets/css/admin.css?v=<?= filemtime(
+            __DIR__ . "/../assets/css/admin.css",
+        ) ?>"
+    >
 </head>
 <body>
 <div class="wrap">
@@ -98,11 +100,18 @@ $links = [
     <div class="main">
         <header class="topbar">
             <h1><?= e($pageTitle) ?></h1>
-            <div class="search">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-                <label for="q" class="sr-only">Search this page</label>
-                <input id="q" type="search" placeholder="Search orders, products, customers…" data-table-filter>
-            </div>
+            <?php if ($here !== "products.php"): ?>
+                <div class="search">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+                    <label for="q" class="sr-only">Search this page</label>
+                    <input
+                        id="q"
+                        type="search"
+                        placeholder="Search orders, products, customers…"
+                        data-table-filter
+                    >
+                </div>
+            <?php endif; ?>
             <div class="top-actions">
                 <button type="button" class="icon-btn" aria-label="Notifications">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>

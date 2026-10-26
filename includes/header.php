@@ -63,11 +63,6 @@ $isAdminPage =
                                 "M4 7h16l-1 13H5L4 7zM9 7a3 3 0 0 1 6 0",
                             ],
                             [
-                                "inventory.php",
-                                "Inventory",
-                                "M3 7h18v13H3zM3 7l2-4h14l2 4M8 11h8",
-                            ],
-                            [
                                 "orders.php",
                                 "Orders",
                                 "M5 4h14v17H5zM8 8h8M8 12h8M8 16h5",

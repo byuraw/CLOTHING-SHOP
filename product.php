@@ -7,7 +7,7 @@ $s = $pdo->prepare(
     FROM products p
     JOIN product_categories c ON c.product_category_id=p.product_category_id
     LEFT JOIN product_types t ON t.product_type_id=p.product_type_id
-    WHERE p.product_id=? AND p.is_active=1',
+    WHERE p.product_id=? AND p.is_active=1 AND c.is_active=1',
 );
 $s->execute([$id]);
 $p = $s->fetch();

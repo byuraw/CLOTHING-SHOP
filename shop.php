@@ -34,7 +34,7 @@ $sql = 'SELECT p.product_id,p.product_name,p.base_price,pi.image_path,c.category
     FROM products p
     JOIN product_categories c ON c.product_category_id=p.product_category_id
     LEFT JOIN product_images pi ON pi.product_id=p.product_id AND pi.sort_order=0
-    WHERE p.is_active=1';
+    WHERE p.is_active=1 AND c.is_active=1';
 $args = [];
 $where = [];
 
