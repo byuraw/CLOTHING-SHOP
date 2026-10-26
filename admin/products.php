@@ -12,21 +12,9 @@ foreach (
     ]
     as $key => $label
 ) {
-    $rawValue = $_GET[$key] ?? "";
-    $value = is_scalar($rawValue) ? trim((string) $rawValue) : null;
-    if ($value === null) {
+    $restockFilterIds[$key] = parse_filter_id($_GET, $key);
+    if ($restockFilterIds[$key] === false) {
         $error = "Choose a valid " . $label . " filter.";
-        $restockFilterIds[$key] = false;
-    } elseif ($value === "") {
-        $restockFilterIds[$key] = null;
-    } else {
-        $filterId = filter_var($value, FILTER_VALIDATE_INT);
-        if ($filterId === false || $filterId < 1) {
-            $error = "Choose a valid " . $label . " filter.";
-            $restockFilterIds[$key] = false;
-        } else {
-            $restockFilterIds[$key] = $filterId;
-        }
     }
 }
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -98,22 +86,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($typeId === false || $typeId === null || $typeId < 1) {
                 throw new RuntimeException("Choose a product type.");
             }
-            $typeCheck = $pdo->prepare(
-                "SELECT COUNT(*) FROM product_types WHERE product_type_id=?",
-            );
-            $typeCheck->execute([$typeId]);
-            if (!$typeCheck->fetchColumn()) {
-                throw new RuntimeException("Choose a valid product type.");
-            }
             $catalogInfo = $pdo->prepare(
-                'SELECT category_name,type_name
-                FROM product_categories
-                JOIN product_types ON product_type_id=?
-                WHERE product_category_id=? AND is_active=1',
+                'SELECT pc.category_name,pt.type_name
+                FROM product_types pt
+                LEFT JOIN product_categories pc
+                    ON pc.product_category_id=? AND pc.is_active=1
+                WHERE pt.product_type_id=?',
             );
-            $catalogInfo->execute([$typeId, $categoryId]);
+            $catalogInfo->execute([$categoryId, $typeId]);
             $catalogInfo = $catalogInfo->fetch();
             if (!$catalogInfo) {
+                throw new RuntimeException("Choose a valid product type.");
+            }
+            if (!$catalogInfo["category_name"]) {
                 throw new RuntimeException(
                     "Choose a valid product category and type.",
                 );
@@ -148,7 +133,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "Choose a size and color, then enter a valid variant price and starting stock.",
                 );
             }
-            clothing_sku(
+            $sku = clothing_sku(
                 $catalogInfo["category_name"],
                 $catalogInfo["type_name"],
                 $name,
@@ -185,13 +170,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ]);
                 $newPid = (int) $pdo->lastInsertId();
 
-                $sku = clothing_sku(
-                    $catalogInfo["category_name"],
-                    $catalogInfo["type_name"],
-                    $name,
-                    $sizeId,
-                    $colorId,
-                );
                 $variant = $pdo->prepare(
                     "INSERT INTO product_variants(product_id,size_id,color_id,sku,price,stock_quantity,is_active) VALUES(?,?,?,?,?,?,1)",
                 );

@@ -13,21 +13,13 @@ foreach (
     ]
     as $key => $label
 ) {
-    $rawValue = $_GET[$key] ?? "";
-    $value = is_scalar($rawValue) ? trim((string) $rawValue) : null;
-    if ($value === null) {
+    $filters[$key] = parse_filter_id(
+        $_GET,
+        $key,
+        $key === "category",
+    );
+    if ($filters[$key] === false) {
         $filterError = "Choose a valid " . $label . " filter.";
-        $filters[$key] = false;
-    } elseif ($value === "" || ($key === "category" && $value === "0")) {
-        $filters[$key] = null;
-    } else {
-        $filterId = filter_var($value, FILTER_VALIDATE_INT);
-        if ($filterId === false || $filterId < 1) {
-            $filterError = "Choose a valid " . $label . " filter.";
-            $filters[$key] = false;
-        } else {
-            $filters[$key] = $filterId;
-        }
     }
 }
 $sql = 'SELECT p.product_id,p.product_name,p.base_price,pi.image_path,c.category_name

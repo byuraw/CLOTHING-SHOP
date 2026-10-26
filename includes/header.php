@@ -171,6 +171,7 @@ $isAdminPage =
                     </header>
                     <main class="admin-main">
         <?php else: ?>
+            <?php $headerCartCount = cart_count($pdo); ?>
             <header class="site-header">
                 <nav aria-label="Main">
                     <a href="/clothing-store-backup/index.php">Home</a>
@@ -223,13 +224,13 @@ $isAdminPage =
                     <a
                         class="icon-btn"
                         href="/clothing-store-backup/cart.php"
-                        aria-label="Cart, <?= cart_count($pdo) ?> items"
+                        aria-label="Cart, <?= $headerCartCount ?> items"
                     >
                         <svg viewBox="0 0 24 24">
                             <path d="M5 8h14l-1 12H6L5 8Z"/>
                             <path d="M9 8a3 3 0 0 1 6 0"/>
                         </svg>
-                        <span class="cart-count"><?= cart_count($pdo) ?></span>
+                        <span class="cart-count"><?= $headerCartCount ?></span>
                     </a>
                 </div>
             </header>

@@ -29,6 +29,22 @@ function csrf_check(): void
         exit("Your form expired. Go back and try again.");
     }
 }
+function parse_filter_id(
+    array $input,
+    string $key,
+    bool $zeroMeansEmpty = false,
+): int|false|null {
+    $rawValue = $input[$key] ?? "";
+    $value = is_scalar($rawValue) ? trim((string) $rawValue) : null;
+    if ($value === null) {
+        return false;
+    }
+    if ($value === "" || ($zeroMeansEmpty && $value === "0")) {
+        return null;
+    }
+    $id = filter_var($value, FILTER_VALIDATE_INT);
+    return $id === false || $id < 1 ? false : $id;
+}
 function flash(string $message, string $type = "success"): void
 {
     $_SESSION["flash"] = [$message, $type];
