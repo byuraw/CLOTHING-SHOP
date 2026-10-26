@@ -184,7 +184,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $variantId = (int) $pdo->lastInsertId();
                 if ($stock > 0) {
                     $inventory = $pdo->prepare(
-                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text) VALUES(?,?,?,'Initial variant stock')",
+                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Initial variant stock')",
                     );
                     $inventory->execute([
                         $variantId,
@@ -386,7 +386,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $variantId = (int) $pdo->lastInsertId();
             if ($stock > 0) {
                 $i = $pdo->prepare(
-                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text) VALUES(?,?,?,'Initial variant stock')",
+                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Initial variant stock')",
                 );
                 $i->execute([$variantId, current_user()["id"], $stock]);
             }
@@ -437,7 +437,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
                 $saveStock->execute([$quantity, $variantId]);
                 $logStock = $pdo->prepare(
-                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text) VALUES(?,?,?,'Product restock')",
+                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Product restock')",
                 );
                 $logStock->execute([
                     $variantId,

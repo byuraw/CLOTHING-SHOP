@@ -11,7 +11,6 @@ CREATE TABLE users (
     user_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     role_name ENUM('Customer', 'Admin') NOT NULL DEFAULT 'Customer',
     status_id TINYINT UNSIGNED NOT NULL,
-    username VARCHAR(50) NULL UNIQUE,
     first_name VARCHAR(80) NOT NULL,
     last_name VARCHAR(80) NOT NULL,
     email VARCHAR(190) NOT NULL UNIQUE,
@@ -220,6 +219,7 @@ CREATE TABLE inventory_transactions (
     variant_id BIGINT UNSIGNED NOT NULL,
     changed_by BIGINT UNSIGNED NULL,
     quantity_change INT NOT NULL,
+    reason VARCHAR(100) NOT NULL,
     reference_text VARCHAR(100) NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (variant_id) REFERENCES product_variants (variant_id),
@@ -248,7 +248,6 @@ VALUES
 
 INSERT INTO
     users (
-        username,
         first_name,
         last_name,
         email,
@@ -256,27 +255,25 @@ INSERT INTO
         role_name,
         status_id
     )
-SELECT
-    'admin',
-    'Admin',
-    'Account',
-    'admin@example.com',
-    '$2y$10$.swgQnJFoU16vz1MuG5R5uAFsDRhHdNiqSsm9JfgbZza8ZCOUklhm',
-    'Admin',
-    s.status_id
-FROM
-    account_statuses s
-WHERE
-    s.status_name = 'Active'
-    AND NOT EXISTS (
-        SELECT
-            1
-        FROM
-            users
-        WHERE
-            username = 'admin'
-            OR email = 'admin@example.com'
-    );
+    SELECT
+        'Admin',
+        'Account',
+        'admin@example.com',
+        '$2y$10$.swgQnJFoU16vz1MuG5R5uAFsDRhHdNiqSsm9JfgbZza8ZCOUklhm',
+        'Admin',
+        s.status_id
+    FROM
+        account_statuses s
+    WHERE
+        s.status_name = 'Active'
+        AND NOT EXISTS (
+            SELECT
+                1
+            FROM
+                users
+            WHERE
+                email = 'admin@example.com'
+        );
 
 INSERT INTO
     order_statuses (status_name)

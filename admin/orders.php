@@ -50,7 +50,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         "UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?",
                     )->execute([$line["quantity"], $line["variant_id"]]);
                     $pdo->prepare(
-                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reference_text) VALUES(?,?,?,?)",
+                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK',?)",
                     )->execute([
                         $line["variant_id"],
                         current_user()["id"],
