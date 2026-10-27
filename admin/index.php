@@ -26,10 +26,9 @@ $customers = (int) $pdo
 $firstMonth = new DateTimeImmutable("first day of this month");
 $from = $firstMonth->modify("-6 months")->format("Y-m-01");
 $salesQuery = $pdo->prepare(
-    "SELECT o.placed_at,o.total_amount
-    FROM orders o
-    JOIN order_statuses s ON s.order_status_id=o.order_status_id
-    WHERE s.status_name IN $paidStatuses AND o.placed_at>=?",
+    "SELECT s.sale_date AS placed_at,s.total_amount
+    FROM sales s
+    WHERE s.sale_date>=?",
 );
 $salesQuery->execute([$from . " 00:00:00"]);
 $months = [];

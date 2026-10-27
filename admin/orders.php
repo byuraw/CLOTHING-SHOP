@@ -10,7 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $pdo->beginTransaction();
     try {
         $s = $pdo->prepare(
-            "SELECT order_status_id,order_number FROM orders WHERE order_id=? FOR UPDATE",
+            "SELECT order_status_id,order_number,total_amount FROM orders WHERE order_id=? FOR UPDATE",
         );
         $s->execute([$id]);
         $old = $s->fetch();
@@ -62,6 +62,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $pdo->prepare(
                 "UPDATE orders SET order_status_id=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?",
             )->execute([$new, $id]);
+            if ($newLabel === "Completed") {
+                $payment = $pdo->prepare(
+                    "SELECT payment_method_id FROM payments WHERE order_id=? ORDER BY paid_at DESC, payment_id DESC LIMIT 1",
+                );
+                $payment->execute([$id]);
+                $paymentRow = $payment->fetch();
+                $complete = $pdo->prepare(
+                    "INSERT INTO complete_transactions(order_id,transaction_reference,total_amount,payment_method_id,notes)
+                    VALUES(?,?,?,?,?)
+                    ON DUPLICATE KEY UPDATE
+                        total_amount=VALUES(total_amount),
+                        payment_method_id=VALUES(payment_method_id),
+                        completed_at=CURRENT_TIMESTAMP,
+                        notes=VALUES(notes)",
+                );
+                $complete->execute([
+                    $id,
+                    "TXN-" . $id . "-" . date("YmdHis"),
+                    (float) $old["total_amount"],
+                    $paymentRow["payment_method_id"] ?? null,
+                    "Auto-recorded when order was marked completed",
+                ]);
+            }
             $hist = $pdo->prepare(
                 "INSERT INTO order_status_history(order_id,order_status_id,changed_by,note) VALUES(?,?,?,?)",
             );

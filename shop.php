@@ -25,7 +25,13 @@ foreach (
 $sql = 'SELECT p.product_id,p.product_name,p.base_price,pi.image_path,c.category_name
     FROM products p
     JOIN product_categories c ON c.product_category_id=p.product_category_id
-    LEFT JOIN product_images pi ON pi.product_id=p.product_id AND pi.sort_order=0
+    INNER JOIN product_images pi ON pi.image_id = (
+        SELECT pi2.image_id
+        FROM product_images pi2
+        WHERE pi2.product_id = p.product_id
+        ORDER BY pi2.sort_order, pi2.image_id
+        LIMIT 1
+    )
     WHERE p.is_active=1 AND c.is_active=1';
 $args = [];
 $where = [];

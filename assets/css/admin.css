@@ -453,12 +453,15 @@ button,
     border: 0;
     border-radius: 7px;
     color: #fff;
-    padding: 9px 16px;
+    min-height: 32px;
+    padding: 7px 12px;
     font:
-        500 13px "Outfit",
+        500 12.5px "Outfit",
         sans-serif;
+    line-height: 1.3;
     cursor: pointer;
     text-decoration: none;
+    white-space: nowrap;
 }
 button:hover,
 .button:hover {
@@ -487,6 +490,32 @@ button.secondary:hover,
 .row > * {
     flex: 1;
 }
+.row > button,
+.row > .button {
+    flex: 0 0 auto;
+    align-self: center;
+}
+.transaction-filter {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 8px;
+    width: min(50%, 420px);
+}
+.transaction-filter label {
+    min-width: 0;
+    margin: 0;
+}
+.transaction-filter select {
+    min-height: 30px;
+    padding: 6px 9px;
+    font-size: 12px;
+}
+.transaction-filter button {
+    min-height: 30px;
+    padding: 6px 9px;
+    font-size: 11.5px;
+}
 td .row {
     flex-wrap: nowrap;
 }
@@ -511,6 +540,26 @@ td .row > button {
 }
 .password-form > button {
     margin-top: 6px;
+}
+.expense-edit-form {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    align-items: end;
+}
+.expense-edit-form label {
+    min-width: 0;
+    margin: 0;
+}
+.expense-edit-form textarea {
+    min-height: 38px;
+    height: 38px;
+}
+.expense-edit-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
 }
 .grid {
     display: grid;
@@ -611,7 +660,19 @@ td .row > button {
     .content {
         padding: 18px;
     }
+    .expense-edit-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .transaction-filter {
+        width: 100%;
+        max-width: 420px;
+    }
     .stats {
         grid-template-columns: 1fr 1fr;
+    }
+}
+@media (max-width: 480px) {
+    .expense-edit-form {
+        grid-template-columns: 1fr;
     }
 }
