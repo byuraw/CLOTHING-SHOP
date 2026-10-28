@@ -59,7 +59,6 @@
         });
     });
 
-    // Product gallery thumbnails
     var main = document.querySelector("[data-main-img]");
     [].forEach.call(document.querySelectorAll("[data-thumb]"), function (b) {
         b.addEventListener("click", function () {

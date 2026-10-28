@@ -25,7 +25,14 @@ $transactionQuery = $pdo->prepare(
         CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
         COALESCE(items.item_count, 0) AS item_count,
         COALESCE(items.total_quantity, 0) AS total_quantity,
-        s.total_amount
+        s.total_amount,
+        (
+            SELECT p.amount
+            FROM payments p
+            WHERE p.order_id = s.order_id
+            ORDER BY p.created_at DESC, p.payment_id DESC
+            LIMIT 1
+        ) AS payment_amount
     FROM sales s
     JOIN orders o ON o.order_id = s.order_id
     JOIN users u ON u.user_id = o.user_id
@@ -104,6 +111,7 @@ require __DIR__ . "/../includes/admin_header.php";
   ) ?></strong><small class="muted">Estimate; excludes product cost and other overhead.</small></div>
 </div>
 <h2>Transactions</h2>
+
 <form class="transaction-filter" method="get">
   <input type="hidden" name="from" value="<?= e($from) ?>" />
   <input type="hidden" name="to" value="<?= e($to) ?>" />
@@ -116,7 +124,7 @@ require __DIR__ . "/../includes/admin_header.php";
   </label>
   <button>Filter transactions</button>
 </form>
-<p class="muted">Single-item means one order line; multi-item means more than one order line. Quantities do not change the transaction type.</p>
+
 <div class="table-wrap">
   <table>
     <thead>
@@ -129,6 +137,7 @@ require __DIR__ . "/../includes/admin_header.php";
         <th>Units</th>
         <th>Type</th>
         <th>Total</th>
+        <th>Payment amount</th>
       </tr>
     </thead>
     <tbody>
@@ -146,10 +155,13 @@ require __DIR__ . "/../includes/admin_header.php";
                 ? "Multi-item"
                 : "No items") ?></td>
         <td>₱<?= number_format((float) $transaction["total_amount"], 2) ?></td>
+        <td><?= $transaction["payment_amount"] === null
+            ? "—"
+            : "₱" . number_format((float) $transaction["payment_amount"], 2) ?></td>
       </tr>
       <?php endforeach; ?>
       <?php if (!$transactions): ?>
-      <tr><td colspan="8" class="empty-note">No transactions match these filters.</td></tr>
+      <tr><td colspan="9" class="empty-note">No transactions match these filters.</td></tr>
       <?php endif; ?>
     </tbody>
   </table>

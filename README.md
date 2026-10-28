@@ -15,6 +15,8 @@ admin panel for products, orders, inventory, and reports.
 1. Place the project in your web server's document root.
 2. Create and seed the database by importing `database/schema.sql` in MySQL.
    The schema creates and selects the `clothing_store_fixed` database.
+   For an existing installation, run `database/upgrade_legacy_cleanup.sql`
+   against that database before using the updated application.
 3. To load the demo customer accounts and sample store data, import
    `database/migrations/006_sample_business_data.sql` after the schema.
 4. Install PHP dependencies from the project root:

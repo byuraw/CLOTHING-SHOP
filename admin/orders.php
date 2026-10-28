@@ -99,7 +99,13 @@ $statuses = $pdo
     ->fetchAll();
 $orders = $pdo
     ->query(
-        "SELECT o.order_id,o.order_number,o.total_amount,o.placed_at,os.status_name,u.first_name,u.last_name FROM orders o JOIN order_statuses os ON os.order_status_id=o.order_status_id JOIN users u ON u.user_id=o.user_id ORDER BY o.placed_at DESC",
+        "SELECT o.order_id,o.order_number,o.total_amount,
+            (SELECT p.amount FROM payments p WHERE p.order_id=o.order_id ORDER BY p.created_at DESC,p.payment_id DESC LIMIT 1) AS payment_amount,
+            o.placed_at,os.status_name,u.first_name,u.last_name
+        FROM orders o
+        JOIN order_statuses os ON os.order_status_id=o.order_status_id
+        JOIN users u ON u.user_id=o.user_id
+        ORDER BY o.placed_at DESC",
     )
     ->fetchAll();
 $pageTitle = "Orders";
@@ -120,6 +126,7 @@ require __DIR__ . "/../includes/admin_header.php";
         <th>Customer</th>
         <th>Date</th>
         <th>Total</th>
+        <th>Payment amount</th>
         <th>Status</th>
       </tr>
     </thead>
@@ -131,6 +138,9 @@ require __DIR__ . "/../includes/admin_header.php";
         <td><?= e($o["first_name"] . " " . $o["last_name"]) ?></td>
         <td><?= e($o["placed_at"]) ?></td>
         <td>₱<?= number_format((float) $o["total_amount"], 2) ?></td>
+        <td><?= $o["payment_amount"] === null
+            ? "—"
+            : "₱" . number_format((float) $o["payment_amount"], 2) ?></td>
         <td>
           <?php if ($o["status_name"] === "Completed"): ?>
           <span><?= e($o["status_name"]) ?></span>
@@ -156,7 +166,7 @@ require __DIR__ . "/../includes/admin_header.php";
       </tr>
       <?php endforeach; ?>
       <?php if (!$orders): ?>
-      <tr><td colspan="5" class="empty-note">No orders have been placed yet.</td></tr>
+      <tr><td colspan="6" class="empty-note">No orders have been placed yet.</td></tr>
       <?php endif; ?>
 
     </tbody>

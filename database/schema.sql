@@ -180,21 +180,14 @@ CREATE TABLE order_items (
     INDEX idx_order_items_order (order_id)
 ) ENGINE = InnoDB;
 
-CREATE TABLE payment_methods (
-    payment_method_id TINYINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    method_name VARCHAR(40) NOT NULL UNIQUE
-) ENGINE = InnoDB;
-
 CREATE TABLE payments (
     payment_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT UNSIGNED NOT NULL,
-    payment_method_id TINYINT UNSIGNED NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     payment_status ENUM('pending', 'paid', 'failed', 'refunded') NOT NULL DEFAULT 'pending',
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (amount >= 0),
     FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
-    FOREIGN KEY (payment_method_id) REFERENCES payment_methods (payment_method_id),
     INDEX idx_payments_order_status (order_id, payment_status)
 ) ENGINE = InnoDB;
 
@@ -203,17 +196,15 @@ CREATE TABLE sales (
     order_id BIGINT UNSIGNED NOT NULL UNIQUE,
     transaction_reference VARCHAR(80) NOT NULL UNIQUE,
     total_amount DECIMAL(10, 2) NOT NULL,
-    payment_method_id TINYINT UNSIGNED NULL,
     sale_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     notes VARCHAR(255) NULL,
     CHECK (total_amount >= 0),
     FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
-    FOREIGN KEY (payment_method_id) REFERENCES payment_methods (payment_method_id) ON DELETE SET NULL,
     INDEX idx_sales_date (sale_date)
 ) ENGINE = InnoDB;
 
 DELIMITER $$
-CREATE TRIGGER trg_orders_insert_completed_transaction
+CREATE TRIGGER trg_orders_insert_completed_sale
 AFTER INSERT ON orders
 FOR EACH ROW
 BEGIN
@@ -225,7 +216,6 @@ BEGIN
             order_id,
             transaction_reference,
             total_amount,
-            payment_method_id,
             sale_date,
             notes
         )
@@ -233,19 +223,17 @@ BEGIN
             NEW.order_id,
             CONCAT('TXN-', NEW.order_id, '-', DATE_FORMAT(NEW.placed_at, '%Y%m%d%H%i%s')),
             NEW.total_amount,
-            NULL,
             NEW.placed_at,
             'Auto-recorded when order was created as completed'
         )
         ON DUPLICATE KEY UPDATE
             transaction_reference = VALUES(transaction_reference),
             total_amount = VALUES(total_amount),
-            payment_method_id = VALUES(payment_method_id),
             sale_date = VALUES(sale_date),
             notes = VALUES(notes);
     END IF;
 END$$
-CREATE TRIGGER trg_orders_completed_to_transaction
+CREATE TRIGGER trg_orders_completed_to_sale
 AFTER UPDATE ON orders
 FOR EACH ROW
 BEGIN
@@ -258,31 +246,19 @@ BEGIN
             order_id,
             transaction_reference,
             total_amount,
-            payment_method_id,
             notes,
             sale_date
         )
-        SELECT
+        VALUES (
             NEW.order_id,
             CONCAT('TXN-', NEW.order_id, '-', DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')),
             NEW.total_amount,
-            p.payment_method_id,
             'Auto-recorded when order was marked completed',
             CURRENT_TIMESTAMP
-        FROM (
-            SELECT 1 AS dummy
-        ) AS base
-        LEFT JOIN (
-            SELECT payment_method_id, order_id
-            FROM payments
-            WHERE order_id = NEW.order_id
-            ORDER BY created_at DESC, payment_id DESC
-            LIMIT 1
-        ) AS p ON p.order_id = NEW.order_id
+        )
         ON DUPLICATE KEY UPDATE
             transaction_reference = VALUES(transaction_reference),
             total_amount = VALUES(total_amount),
-            payment_method_id = VALUES(payment_method_id),
             notes = VALUES(notes),
             sale_date = VALUES(sale_date);
     END IF;
@@ -375,13 +351,6 @@ VALUES
     ('Delivered'),
     ('Completed'),
     ('Cancelled');
-
-INSERT INTO
-    payment_methods (method_name)
-VALUES
-    ('Cash on Delivery'),
-    ('Bank Transfer'),
-    ('E-Wallet');
 
 INSERT INTO
     sizes (size_id, size_name)

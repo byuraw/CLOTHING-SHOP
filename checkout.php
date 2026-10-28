@@ -2,12 +2,6 @@
 require_once __DIR__ . "/includes/functions.php";
 require_login();
 
-$methods = $pdo
-    ->query(
-        "SELECT payment_method_id,method_name FROM payment_methods ORDER BY payment_method_id",
-    )
-    ->fetchAll();
-
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     csrf_check();
     $pdo->beginTransaction();
@@ -30,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             throw new RuntimeException("Your cart is empty.");
         }
 
-        $subtotal = 0;
+        $subtotalCents = 0;
         foreach ($items as $i) {
             if (
                 (int) $i["quantity"] < 1 ||
@@ -41,53 +35,47 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
 
-            $subtotal += (float) $i["price"] * (int) $i["quantity"];
+            $subtotalCents +=
+                (int) round((float) $i["price"] * 100) *
+                (int) $i["quantity"];
         }
+        $subtotal = $subtotalCents / 100;
 
-        $method = (int) ($_POST["payment_method_id"] ?? 0);
-        $validMethod = $pdo->prepare(
-            "SELECT payment_method_id FROM payment_methods WHERE payment_method_id=?",
-        );
-        $validMethod->execute([$method]);
-
-        if (!$validMethod->fetchColumn()) {
-            throw new RuntimeException("Choose a valid payment method.");
+        $paymentAmountInput = trim((string) ($_POST["payment_amount"] ?? ""));
+        if (!preg_match('/^\d{1,8}(?:\.\d{1,2})?$/D', $paymentAmountInput)) {
+            throw new RuntimeException("Enter a valid payment amount.");
         }
+        $paymentParts = explode(".", $paymentAmountInput, 2);
+        $paymentAmountCents =
+            (int) $paymentParts[0] * 100 +
+            (int) str_pad($paymentParts[1] ?? "", 2, "0");
 
-        $recipient = trim($_POST["recipient_name"] ?? "");
-        $phone = trim($_POST["phone"] ?? "");
-        $line = trim($_POST["address_line1"] ?? "");
-        $city = trim($_POST["city"] ?? "");
-        $province = trim($_POST["province"] ?? "");
-        $postal = trim($_POST["postal_code"] ?? "");
-
-        if (
-            !$recipient ||
-            !$phone ||
-            !$line ||
-            !$city ||
-            !$province ||
-            !$postal
-        ) {
+        if ($paymentAmountCents < $subtotalCents) {
             throw new RuntimeException(
-                "Complete every delivery address field.",
+                "Payment amount is insufficient. Enter at least ₱" .
+                    number_format($subtotal, 2) .
+                    ".",
+            );
+        }
+        $paymentAmount = number_format(
+            $paymentAmountCents / 100,
+            2,
+            ".",
+            "",
+        );
+
+        $addressId = (int) ($_POST["address_id"] ?? 0);
+        $savedAddress = $pdo->prepare(
+            "SELECT address_id FROM addresses WHERE address_id=? AND user_id=? FOR UPDATE",
+        );
+        $savedAddress->execute([$addressId, $uid]);
+
+        if (!$savedAddress->fetchColumn()) {
+            throw new RuntimeException(
+                "Choose one of your saved delivery addresses.",
             );
         }
 
-        $a = $pdo->prepare(
-            'INSERT INTO addresses(user_id,recipient_name,phone,address_line1,city,province,postal_code,is_default)
-            VALUES(?,?,?,?,?,?,?,0)',
-        );
-        $a->execute([
-            $uid,
-            $recipient,
-            $phone,
-            $line,
-            $city,
-            $province,
-            $postal,
-        ]);
-        $addressId = (int) $pdo->lastInsertId();
         $status = (int) $pdo
             ->query(
                 "SELECT order_status_id FROM order_statuses WHERE status_name='Pending'",
@@ -155,9 +143,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         }
 
         $pay = $pdo->prepare(
-            "INSERT INTO payments(order_id,payment_method_id,amount,payment_status) VALUES(?,?,?,'pending')",
+            "INSERT INTO payments(order_id,amount,payment_status) VALUES(?,?,'pending')",
         );
-        $pay->execute([$orderId, $method, $subtotal + $shipping]);
+        $pay->execute([$orderId, $paymentAmount]);
         log_order_status($pdo, $orderId, $status, $uid, "Order placed");
         $del = $pdo->prepare("DELETE FROM cart_items WHERE user_id=?");
         $del->execute([$uid]);
@@ -190,16 +178,18 @@ $q = $pdo->prepare(
 $q->execute([current_user()["id"]]);
 $items = $q->fetchAll();
 $addressQuery = $pdo->prepare(
-    'SELECT recipient_name,phone,address_line1,city,province,postal_code
-    FROM addresses WHERE user_id=? ORDER BY is_default DESC,address_id DESC LIMIT 1',
+    'SELECT address_id,recipient_name,phone,address_line1,city,province,postal_code
+    FROM addresses WHERE user_id=? ORDER BY is_default DESC,address_id DESC',
 );
 $addressQuery->execute([current_user()["id"]]);
-$deliveryAddress = $addressQuery->fetch() ?: [];
-$total = 0;
+$deliveryAddress = $addressQuery->fetchAll();
+$totalCents = 0;
 
 foreach ($items as $i) {
-    $total += (float) $i["price"] * (int) $i["quantity"];
+    $totalCents +=
+        (int) round((float) $i["price"] * 100) * (int) $i["quantity"];
 }
+$total = $totalCents / 100;
 
 $pageTitle = "Checkout";
 require __DIR__ . "/includes/header.php";
@@ -212,38 +202,56 @@ require __DIR__ . "/includes/header.php";
     </div>
 <?php else: ?>
     <div class="row">
+        <?php if (!$deliveryAddress): ?>
+            <section class="notice">
+                Save a delivery address before checking out.
+                <a href="<?= e(APP_BASE . "/user/addresses.php") ?>">Manage addresses</a>
+            </section>
+        <?php else: ?>
         <form class="form-card" method="post">
             <h2>Delivery address</h2>
             <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>" />
-            <?php foreach (
-                [
-                    "recipient_name" => "Recipient name",
-                    "phone" => "Phone",
-                    "address_line1" => "Address",
-                    "city" => "City",
-                    "province" => "Province",
-                    "postal_code" => "Postal code",
-                ]
-                as $key => $label
-            ): ?>
-                <label><?= e($label) ?></label>
-                <input name="<?= e($key) ?>" value="<?= e(
-    $deliveryAddress[$key] ?? "",
-) ?>" />
-            <?php endforeach; ?>
-
-            <label>Payment method</label>
-            <select name="payment_method_id">
-                <?php foreach ($methods as $m): ?>
-                    <option value="<?= (int) $m["payment_method_id"] ?>">
-                        <?= e($m["method_name"]) ?>
+            <label for="address_id">Saved address</label>
+            <select id="address_id" name="address_id" required>
+                <?php foreach ($deliveryAddress as $address): ?>
+                    <option value="<?= (int) $address["address_id"] ?>">
+                        <?= e(
+                            $address["recipient_name"] .
+                                " · " .
+                                $address["phone"] .
+                                " · " .
+                                $address["address_line1"] .
+                                ", " .
+                                $address["city"] .
+                                ", " .
+                                $address["province"] .
+                                " " .
+                                $address["postal_code"],
+                        ) ?>
                     </option>
                 <?php endforeach; ?>
             </select>
+            <p><a href="<?= e(APP_BASE . "/user/addresses.php") ?>">Manage saved addresses</a></p>
+
+            <label for="payment_amount">Payment amount (₱)</label>
+            <input
+                id="payment_amount"
+                name="payment_amount"
+                type="number"
+                min="<?= number_format($total, 2, ".", "") ?>"
+                step="0.01"
+                value="<?= number_format($total, 2, ".", "") ?>"
+                required
+                aria-describedby="payment-amount-warning"
+            />
+            <p id="payment-amount-warning" class="notice error" role="alert" hidden>
+                Payment amount is insufficient. Enter at least ₱<?= number_format($total, 2) ?>.
+            </p>
             <label>Order note (optional)</label>
             <textarea name="customer_note"></textarea>
-            <button>Place order - ₱<?= number_format($total, 2) ?></button>
+            <button id="place-order-button">Place order - ₱<?= number_format($total, 2) ?></button>
         </form>
+        <?php endif; ?>
 
         <section class="card">
             <h2>Order summary</h2>
@@ -263,5 +271,28 @@ require __DIR__ . "/includes/header.php";
         </section>
     </div>
 <?php endif; ?>
+
+<script>
+    const paymentAmountInput = document.getElementById("payment_amount");
+    const paymentAmountWarning = document.getElementById("payment-amount-warning");
+    const placeOrderButton = document.getElementById("place-order-button");
+
+    if (paymentAmountInput && paymentAmountWarning && placeOrderButton) {
+        const minimumPaymentCents = Math.round(Number(paymentAmountInput.min) * 100);
+        const validatePaymentAmount = () => {
+            const enteredAmount = Number(paymentAmountInput.value);
+            const enteredAmountCents = Number.isFinite(enteredAmount)
+                ? Math.round(enteredAmount * 100)
+                : 0;
+            const insufficient = enteredAmountCents < minimumPaymentCents;
+
+            paymentAmountWarning.hidden = !insufficient;
+            placeOrderButton.disabled = insufficient;
+        };
+
+        paymentAmountInput.addEventListener("input", validatePaymentAmount);
+        validatePaymentAmount();
+    }
+</script>
 
 <?php require __DIR__ . "/includes/footer.php"; ?>
