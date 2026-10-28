@@ -10,7 +10,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         );
         $q->execute([(int) ($_POST["address_id"] ?? 0), current_user()["id"]]);
         flash("Address removed.");
-        redirect("/clothing-store-backup/user/addresses.php");
+        redirect(APP_BASE . "/user/addresses.php");
     }
     $keys = [
         "recipient_name",
@@ -33,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
             $q->execute(array_merge([current_user()["id"]], $values));
             flash("Address saved.");
-            redirect("/clothing-store-backup/user/addresses.php");
+            redirect(APP_BASE . "/user/addresses.php");
         } catch (Throwable $e) {
             $error = "Could not save the address.";
         }

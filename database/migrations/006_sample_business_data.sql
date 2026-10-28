@@ -38,16 +38,16 @@ FROM (
 JOIN account_statuses st ON st.status_name='Active'
 WHERE NOT EXISTS (SELECT 1 FROM users u WHERE u.email=x.email);
 
-INSERT INTO addresses (user_id,recipient_name,phone,address_line1,address_line2,city,province,postal_code,is_default)
+INSERT INTO addresses (user_id,recipient_name,phone,address_line1,city,province,postal_code,is_default)
 SELECT u.user_id, CONCAT(u.first_name,' ',u.last_name), u.phone,
-       x.address_line1, x.address_line2, x.city, x.province, x.postal_code, 1
+       x.address_line1, x.city, x.province, x.postal_code, 1
 FROM (
- SELECT 'alex.reyes.demo@example.com' email,'Blk 12 Lot 4, Sampaguita St.' address_line1,'Barangay Central' address_line2,'Taguig City' city,'Metro Manila' province,'1630' postal_code UNION ALL
- SELECT 'mika.santos.demo@example.com','Unit 3B, 28 Rizal Ave.','Barangay Poblacion','Makati City','Metro Manila','1210' UNION ALL
- SELECT 'jordan.cruz.demo@example.com','15 Narra Street','Barangay San Isidro','Pasig City','Metro Manila','1600' UNION ALL
- SELECT 'sam.garcia.demo@example.com','22 Mabini Road','Barangay Highway Hills','Mandaluyong City','Metro Manila','1550' UNION ALL
- SELECT 'taylor.delacruz.demo@example.com','Unit 5, 8 Bonifacio St.','Barangay Fort Bonifacio','Taguig City','Metro Manila','1634' UNION ALL
- SELECT 'casey.mendoza.demo@example.com','9 Acacia Lane','Barangay Santa Cruz','Quezon City','Metro Manila','1104'
+ SELECT 'alex.reyes.demo@example.com' email,'Blk 12 Lot 4, Sampaguita St.' address_line1,'Taguig City' city,'Metro Manila' province,'1630' postal_code UNION ALL
+ SELECT 'mika.santos.demo@example.com','Unit 3B, 28 Rizal Ave.','Makati City','Metro Manila','1210' UNION ALL
+ SELECT 'jordan.cruz.demo@example.com','15 Narra Street','Pasig City','Metro Manila','1600' UNION ALL
+ SELECT 'sam.garcia.demo@example.com','22 Mabini Road','Mandaluyong City','Metro Manila','1550' UNION ALL
+ SELECT 'taylor.delacruz.demo@example.com','Unit 5, 8 Bonifacio St.','Taguig City','Metro Manila','1634' UNION ALL
+ SELECT 'casey.mendoza.demo@example.com','9 Acacia Lane','Quezon City','Metro Manila','1104'
 ) x
 JOIN users u ON u.email=x.email
 WHERE NOT EXISTS (SELECT 1 FROM addresses a WHERE a.user_id=u.user_id AND a.is_default=1);
@@ -108,13 +108,11 @@ UPDATE orders o SET
   o.total_amount=(SELECT COALESCE(SUM(oi.line_total),0) FROM order_items oi WHERE oi.order_id=o.order_id) + o.shipping_fee
 WHERE o.order_number LIKE 'ORD-202610%-A1B2%';
 
-INSERT INTO payments (order_id,payment_method_id,amount,payment_status,reference_number,paid_at)
+INSERT INTO payments (order_id,payment_method_id,amount,payment_status)
 SELECT o.order_id,pm.payment_method_id,o.total_amount,
  CASE WHEN os.status_name IN ('Delivered','Completed') THEN 'paid'
       WHEN os.status_name='Cancelled' THEN 'refunded'
-      ELSE 'pending' END,
- CASE WHEN os.status_name IN ('Delivered','Completed') THEN CONCAT('PAY-',RIGHT(o.order_number,6)) ELSE NULL END,
- CASE WHEN os.status_name IN ('Delivered','Completed') THEN o.placed_at ELSE NULL END
+      ELSE 'pending' END
 FROM orders o
 JOIN order_statuses os ON os.order_status_id=o.order_status_id
 JOIN payment_methods pm ON pm.method_name=CASE MOD(o.order_id,3)
@@ -163,6 +161,33 @@ JOIN product_variants v ON v.product_id=p.product_id
 WHERE NOT EXISTS (
     SELECT 1 FROM inventory_transactions it
     WHERE it.reference_text=x.reference_text AND it.variant_id=v.variant_id
+);
+
+-- Align seeded sample order numbers with the format used by checkout.
+UPDATE orders
+SET order_number = CASE order_number
+    WHEN 'DEMO-SAMPLE-ORD-001' THEN 'ORD-20261001-A1B201'
+    WHEN 'DEMO-SAMPLE-ORD-002' THEN 'ORD-20261003-A1B202'
+    WHEN 'DEMO-SAMPLE-ORD-003' THEN 'ORD-20261005-A1B203'
+    WHEN 'DEMO-SAMPLE-ORD-004' THEN 'ORD-20261008-A1B204'
+    WHEN 'DEMO-SAMPLE-ORD-005' THEN 'ORD-20261010-A1B205'
+    WHEN 'DEMO-SAMPLE-ORD-006' THEN 'ORD-20261012-A1B206'
+    WHEN 'DEMO-SAMPLE-ORD-007' THEN 'ORD-20261015-A1B207'
+    WHEN 'DEMO-SAMPLE-ORD-008' THEN 'ORD-20261018-A1B208'
+    WHEN 'DEMO-SAMPLE-ORD-009' THEN 'ORD-20261021-A1B209'
+    WHEN 'DEMO-SAMPLE-ORD-010' THEN 'ORD-20261024-A1B20A'
+END
+WHERE order_number IN (
+    'DEMO-SAMPLE-ORD-001',
+    'DEMO-SAMPLE-ORD-002',
+    'DEMO-SAMPLE-ORD-003',
+    'DEMO-SAMPLE-ORD-004',
+    'DEMO-SAMPLE-ORD-005',
+    'DEMO-SAMPLE-ORD-006',
+    'DEMO-SAMPLE-ORD-007',
+    'DEMO-SAMPLE-ORD-008',
+    'DEMO-SAMPLE-ORD-009',
+    'DEMO-SAMPLE-ORD-010'
 );
 
 COMMIT;

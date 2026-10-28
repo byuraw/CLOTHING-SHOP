@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         flash("Cart updated.");
     }
 
-    redirect("/clothing-store-backup/cart.php");
+    redirect(APP_BASE . "/cart.php");
 }
 
 $q = $pdo->prepare(
@@ -51,7 +51,7 @@ require __DIR__ . "/includes/header.php";
 <?php if (!$items): ?>
     <div class="empty">
         Your cart is empty.
-        <a href="/clothing-store-backup/shop.php">Browse the shop</a>.
+        <a href="<?= APP_BASE ?>/shop.php">Browse the shop</a>.
     </div>
 <?php else: ?>
     <div class="table-wrap">
@@ -130,7 +130,7 @@ require __DIR__ . "/includes/header.php";
         <span></span>
         <b>Total: ₱<?= number_format($total, 2) ?></b>
     </div>
-    <a class="button" href="/clothing-store-backup/checkout.php">Continue to checkout</a>
+    <a class="button" href="<?= APP_BASE ?>/checkout.php">Continue to checkout</a>
 <?php endif; ?>
 
 <?php require __DIR__ . "/includes/footer.php"; ?>

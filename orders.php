@@ -19,7 +19,7 @@ require __DIR__ . "/includes/header.php";
 <?php if (!$orders): ?>
     <div class="empty">
         You have not placed an order yet.
-        <a href="/clothing-store-backup/shop.php">Start shopping</a>.
+        <a href="<?= APP_BASE ?>/shop.php">Start shopping</a>.
     </div>
 <?php else: ?>
     <div class="table-wrap">
@@ -44,7 +44,7 @@ require __DIR__ . "/includes/header.php";
                             2,
                         ) ?></td>
                         <td>
-                            <a href="/clothing-store-backup/order-details.php?id=<?= (int) $o[
+                            <a href="<?= APP_BASE ?>/order-details.php?id=<?= (int) $o[
                                 "order_id"
                             ] ?>">
                                 Details

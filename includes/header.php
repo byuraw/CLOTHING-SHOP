@@ -27,7 +27,7 @@ $isAdminPage =
         >
         <link
             rel="stylesheet"
-            href="/clothing-store-backup/assets/css/style.css?v=<?= filemtime(
+            href="<?= APP_BASE ?>/assets/css/style.css?v=<?= filemtime(
                 __DIR__ . "/../assets/css/style.css",
             ) ?>"
         >
@@ -38,7 +38,7 @@ $isAdminPage =
         <?php if ($isAdminPage): ?>
             <div class="admin-shell">
                 <aside class="admin-sidebar">
-                    <a class="admin-brand" href="/clothing-store-backup/admin/index.php">
+                    <a class="admin-brand" href="<?= APP_BASE ?>/admin/index.php">
                         <svg viewBox="0 0 24 24" aria-hidden="true">
                             <path d="m3 7 9-4 9 4-9 4-9-4zM3 12l9 4 9-4M3 17l9 4 9-4"/>
                         </svg>
@@ -89,7 +89,7 @@ $isAdminPage =
                                 class="admin-nav-link<?= $active
                                     ? " active"
                                     : "" ?>"
-                                href="/clothing-store-backup/admin/<?= e(
+                                href="<?= APP_BASE ?>/admin/<?= e(
                                     $file,
                                 ) ?>"
                                 <?= $active ? 'aria-current="page"' : "" ?>
@@ -104,13 +104,13 @@ $isAdminPage =
                         ?>
                     </nav>
                     <div class="admin-sidebar-bottom">
-                        <a class="admin-store-link" href="/clothing-store-backup/index.php">
+                        <a class="admin-store-link" href="<?= APP_BASE ?>/index.php">
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <path d="M3 10h18l-2-6H5l-2 6ZM5 10v10h14V10M9 20v-6h6v6"/>
                             </svg>
                             View storefront
                         </a>
-                        <a class="admin-signout" href="/clothing-store-backup/user/logout.php">
+                        <a class="admin-signout" href="<?= APP_BASE ?>/user/logout.php">
                             Sign out
                         </a>
                     </div>
@@ -123,7 +123,7 @@ $isAdminPage =
                         <form
                             class="admin-search"
                             method="get"
-                            action="/clothing-store-backup/admin/index.php"
+                            action="<?= APP_BASE ?>/admin/index.php"
                         >
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="11" cy="11" r="7"/>
@@ -140,7 +140,7 @@ $isAdminPage =
                         <div class="admin-account">
                             <a
                                 class="admin-top-action"
-                                href="/clothing-store-backup/admin/orders.php"
+                                href="<?= APP_BASE ?>/admin/orders.php"
                                 aria-label="Orders"
                             >
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -149,7 +149,7 @@ $isAdminPage =
                             </a>
                             <a
                                 class="admin-top-action"
-                                href="/clothing-store-backup/admin/users.php"
+                                href="<?= APP_BASE ?>/admin/users.php"
                                 aria-label="Customers"
                             >
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -174,29 +174,29 @@ $isAdminPage =
             <?php $headerCartCount = cart_count($pdo); ?>
             <header class="site-header">
                 <nav aria-label="Main">
-                    <a href="/clothing-store-backup/index.php">Home</a>
-                    <a href="/clothing-store-backup/shop.php">Shop</a>
+                    <a href="<?= APP_BASE ?>/index.php">Home</a>
+                    <a href="<?= APP_BASE ?>/shop.php">Shop</a>
                     <?php if (current_user()): ?>
-                        <a href="/clothing-store-backup/orders.php">My orders</a>
+                        <a href="<?= APP_BASE ?>/orders.php">My orders</a>
                     <?php endif; ?>
                     <?php if ($isAdmin): ?>
-                        <a href="/clothing-store-backup/admin/index.php">Admin</a>
+                        <a href="<?= APP_BASE ?>/admin/index.php">Admin</a>
                     <?php endif; ?>
                 </nav>
-                <a class="brand" href="/clothing-store-backup/index.php">
+                <a class="brand" href="<?= APP_BASE ?>/index.php">
                     Wearwell<span> Clothing</span>
                 </a>
                 <div class="header-tools">
                     <?php if (current_user()): ?>
                         <a
                             class="user-name"
-                            href="/clothing-store-backup/user/profile.php"
+                            href="<?= APP_BASE ?>/user/profile.php"
                         >
                             <?= e(current_user()["name"]) ?>
                         </a>
-                        <a href="/clothing-store-backup/user/logout.php">Sign out</a>
+                        <a href="<?= APP_BASE ?>/user/logout.php">Sign out</a>
                     <?php else: ?>
-                        <a href="/clothing-store-backup/user/login.php">Sign in</a>
+                        <a href="<?= APP_BASE ?>/user/login.php">Sign in</a>
                     <?php endif; ?>
                     <?php if ($currentAdminPage !== "index.php"): ?>
                         <button
@@ -213,7 +213,7 @@ $isAdminPage =
                     <?php endif; ?>
                     <a
                         class="icon-btn"
-                        href="/clothing-store-backup/user/profile.php"
+                        href="<?= APP_BASE ?>/user/profile.php"
                         aria-label="Account"
                     >
                         <svg viewBox="0 0 24 24">
@@ -223,7 +223,7 @@ $isAdminPage =
                     </a>
                     <a
                         class="icon-btn"
-                        href="/clothing-store-backup/cart.php"
+                        href="<?= APP_BASE ?>/cart.php"
                         aria-label="Cart, <?= $headerCartCount ?> items"
                     >
                         <svg viewBox="0 0 24 24">
@@ -235,7 +235,7 @@ $isAdminPage =
                 </div>
             </header>
             <div class="search-bar" id="search-bar">
-                <form method="get" action="/clothing-store-backup/index.php">
+                <form method="get" action="<?= APP_BASE ?>/index.php">
                     <input
                         name="q"
                         value="<?= e($_GET["q"] ?? "") ?>"

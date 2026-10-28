@@ -60,13 +60,13 @@ function product_card(array $p, bool $hidden = false): void
     <article class="card" data-cat="<?= (int) $p[
         "category_id"
     ] ?>"<?= $hidden ? " hidden" : "" ?>>
-        <a href="/clothing-store-backup/product.php?id=<?= (int) $p[
+        <a href="<?= APP_BASE ?>/product.php?id=<?= (int) $p[
             "product_id"
         ] ?>">
             <div class="product-image">
                 <?php if ($p["image_path"]): ?>
                     <img
-                        src="/clothing-store-backup/<?= e($p["image_path"]) ?>"
+                        src="<?= APP_BASE ?>/<?= e($p["image_path"]) ?>"
                         alt="<?= e($p["product_name"]) ?>"
                         loading="lazy"
                     >
@@ -102,7 +102,7 @@ function product_card(array $p, bool $hidden = false): void
             <div class="hero-copy">
                 <small>New season collection</small>
                 <h1>Style made for every day</h1>
-                <a class="button light" href="/clothing-store-backup/shop.php">Discover now</a>
+                <a class="button light" href="<?= APP_BASE ?>/shop.php">Discover now</a>
             </div>
         </div>
         <div class="hero-slide" aria-hidden="true">
@@ -118,7 +118,7 @@ function product_card(array $p, bool $hidden = false): void
             <div class="hero-copy">
                 <small>Everyday essentials</small>
                 <h2>Make room for more style</h2>
-                <a class="button light" href="/clothing-store-backup/shop.php">Shop the collection</a>
+                <a class="button light" href="<?= APP_BASE ?>/shop.php">Shop the collection</a>
             </div>
         </div>
         <button type="button" class="hero-arrow prev" aria-label="Previous slide">
@@ -169,7 +169,7 @@ function product_card(array $p, bool $hidden = false): void
     if (count($tiles) >= 1): ?>
         <section class="wrap promos" aria-label="Shop by category">
             <?php $t = $tiles[0]; ?>
-            <a class="promo tall a" href="/clothing-store-backup/shop.php?category=<?= (int) $t[
+            <a class="promo tall a" href="<?= APP_BASE ?>/shop.php?category=<?= (int) $t[
                 "category_id"
             ] ?>">
                 <small>Shop by category</small>
@@ -179,7 +179,7 @@ function product_card(array $p, bool $hidden = false): void
 
             <?php if (isset($tiles[1])): ?>
                 <?php $t = $tiles[1]; ?>
-                <a class="promo b" href="/clothing-store-backup/shop.php?category=<?= (int) $t[
+                <a class="promo b" href="<?= APP_BASE ?>/shop.php?category=<?= (int) $t[
                     "category_id"
                 ] ?>">
                     <small>Shop by category</small>
@@ -191,7 +191,7 @@ function product_card(array $p, bool $hidden = false): void
             <div class="promo-bottom">
                 <?php if (isset($tiles[2])): ?>
                     <?php $t = $tiles[2]; ?>
-                    <a class="promo c" href="/clothing-store-backup/shop.php?category=<?= (int) $t[
+                    <a class="promo c" href="<?= APP_BASE ?>/shop.php?category=<?= (int) $t[
                         "category_id"
                     ] ?>">
                         <small>Shop by category</small>
@@ -200,7 +200,7 @@ function product_card(array $p, bool $hidden = false): void
                     </a>
                 <?php endif; ?>
 
-                <a class="promo blue" href="/clothing-store-backup/shop.php">
+                <a class="promo blue" href="<?= APP_BASE ?>/shop.php">
                     <h3>Free shipping</h3>
                     <div class="big">₱0</div>
                     <span class="button">Shop now</span>

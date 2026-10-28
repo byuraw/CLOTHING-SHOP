@@ -133,13 +133,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "Choose a size and color, then enter a valid variant price and starting stock.",
                 );
             }
-            $sku = clothing_sku(
-                $catalogInfo["category_name"],
-                $catalogInfo["type_name"],
-                $name,
-                $sizeId,
-                $colorId,
-            );
             $photos = $_FILES["photos"] ?? null;
             if (
                 !is_array($photos) ||
@@ -169,6 +162,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $price,
                 ]);
                 $newPid = (int) $pdo->lastInsertId();
+                $sku = clothing_sku(
+                    $catalogInfo["category_name"],
+                    $catalogInfo["type_name"],
+                    $newPid,
+                    $sizeId,
+                    $colorId,
+                );
 
                 $variant = $pdo->prepare(
                     "INSERT INTO product_variants(product_id,size_id,color_id,sku,price,stock_quantity,is_active) VALUES(?,?,?,?,?,?,1)",
@@ -183,14 +183,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 ]);
                 $variantId = (int) $pdo->lastInsertId();
                 if ($stock > 0) {
-                    $inventory = $pdo->prepare(
-                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Initial variant stock')",
-                    );
-                    $inventory->execute([
+                    log_inventory(
+                        $pdo,
                         $variantId,
-                        current_user()["id"],
+                        (int) current_user()["id"],
                         $stock,
-                    ]);
+                        "RESTOCK",
+                        "Initial variant stock",
+                    );
                 }
 
                 $image = $pdo->prepare(
@@ -282,13 +282,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "Choose a valid product category and type.",
                 );
             }
-            clothing_sku(
-                $catalogInfo["category_name"],
-                $catalogInfo["type_name"],
-                $name,
-                null,
-                null,
-            );
             $pdo->beginTransaction();
             try {
                 $q = $pdo->prepare(
@@ -303,27 +296,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $price,
                     $pid,
                 ]);
-                $variants = $pdo->prepare(
-                    "SELECT variant_id,size_id,color_id FROM product_variants WHERE product_id=?",
-                );
-                $variants->execute([$pid]);
-                $saveSku = $pdo->prepare(
-                    "UPDATE product_variants SET sku=? WHERE variant_id=?",
-                );
-                foreach ($variants->fetchAll() as $variant) {
-                    $sku = clothing_sku(
-                        $catalogInfo["category_name"],
-                        $catalogInfo["type_name"],
-                        $name,
-                        $variant["size_id"] === null
-                            ? null
-                            : (int) $variant["size_id"],
-                        $variant["color_id"] === null
-                            ? null
-                            : (int) $variant["color_id"],
-                    );
-                    $saveSku->execute([$sku, $variant["variant_id"]]);
-                }
                 $pdo->commit();
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {
@@ -345,7 +317,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
             $product = $pdo->prepare(
-                "SELECT p.product_name,pc.category_name,pt.type_name FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1",
+                "SELECT pc.category_name,pt.type_name FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1",
             );
             $product->execute([$pid]);
             $product = $product->fetch();
@@ -375,7 +347,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $sku = clothing_sku(
                 $product["category_name"],
                 $product["type_name"],
-                $product["product_name"],
+                $pid,
                 $sizeId,
                 $colorId,
             );
@@ -385,10 +357,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $q->execute([$pid, $sizeId, $colorId, $sku, $price, $stock]);
             $variantId = (int) $pdo->lastInsertId();
             if ($stock > 0) {
-                $i = $pdo->prepare(
-                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Initial variant stock')",
+                log_inventory(
+                    $pdo,
+                    $variantId,
+                    (int) current_user()["id"],
+                    $stock,
+                    "RESTOCK",
+                    "Initial variant stock",
                 );
-                $i->execute([$variantId, current_user()["id"], $stock]);
             }
             flash("Variant created.");
         } elseif ($action === "restock") {
@@ -436,14 +412,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?",
                 );
                 $saveStock->execute([$quantity, $variantId]);
-                $logStock = $pdo->prepare(
-                    "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK','Product restock')",
-                );
-                $logStock->execute([
+                log_inventory(
+                    $pdo,
                     $variantId,
-                    current_user()["id"],
+                    (int) current_user()["id"],
                     $quantity,
-                ]);
+                    "RESTOCK",
+                    "Product restock",
+                );
                 $pdo->commit();
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {
@@ -462,7 +438,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $q->execute([(int) $_POST["product_id"]]);
             flash("Product archived.");
         }
-        redirect("/clothing-store-backup/admin/products.php");
+        redirect(APP_BASE . "/admin/products.php");
     } catch (Throwable $e) {
         $error =
             $e instanceof RuntimeException

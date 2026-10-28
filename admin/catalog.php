@@ -33,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
             flash("Product category removed from the catalog. Existing products were kept.");
-            redirect("/clothing-store-backup/admin/catalog.php");
+            redirect(APP_BASE . "/admin/catalog.php");
         } elseif ($action === "remove_type") {
             $typeId = (int) ($_POST["product_type_id"] ?? 0);
             if ($typeId < 1) {
@@ -61,7 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
             flash("Product type removed.");
-            redirect("/clothing-store-backup/admin/catalog.php");
+            redirect(APP_BASE . "/admin/catalog.php");
         } elseif (($_POST["kind"] ?? "") === "category") {
             $n = trim($_POST["category_name"] ?? "");
             if (!$n) {
@@ -84,7 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             throw new RuntimeException("Choose a valid catalog action.");
         }
         flash("Saved successfully.");
-        redirect("/clothing-store-backup/admin/catalog.php");
+        redirect(APP_BASE . "/admin/catalog.php");
     } catch (RuntimeException $e) {
         $error = $e->getMessage();
     } catch (PDOException $e) {

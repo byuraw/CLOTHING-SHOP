@@ -123,11 +123,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             SET stock_quantity=stock_quantity-?
             WHERE variant_id=? AND stock_quantity>=?',
         );
-        $inv = $pdo->prepare(
-            'INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text)
-            VALUES(?,?,?,\'SALE\',?)',
-        );
-
         foreach ($items as $i) {
             $qty = (int) $i["quantity"];
             $oi->execute([
@@ -149,23 +144,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
 
-            $inv->execute([$i["variant_id"], $uid, -$qty, $number]);
+            log_inventory(
+                $pdo,
+                (int) $i["variant_id"],
+                (int) $uid,
+                -$qty,
+                "SALE",
+                $number,
+            );
         }
 
         $pay = $pdo->prepare(
             "INSERT INTO payments(order_id,payment_method_id,amount,payment_status) VALUES(?,?,?,'pending')",
         );
         $pay->execute([$orderId, $method, $subtotal + $shipping]);
-        $hist = $pdo->prepare(
-            "INSERT INTO order_status_history(order_id,order_status_id,changed_by,note) VALUES(?,?,?,'Order placed')",
-        );
-        $hist->execute([$orderId, $status, $uid]);
+        log_order_status($pdo, $orderId, $status, $uid, "Order placed");
         $del = $pdo->prepare("DELETE FROM cart_items WHERE user_id=?");
         $del->execute([$uid]);
         $pdo->commit();
 
         flash("Order placed successfully.");
-        redirect("/clothing-store-backup/order-details.php?id=" . $orderId);
+        redirect(APP_BASE . "/order-details.php?id=" . $orderId);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -177,7 +176,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 : "Checkout failed. Please try again.",
             "error",
         );
-        redirect("/clothing-store-backup/checkout.php");
+        redirect(APP_BASE . "/checkout.php");
     }
 }
 
@@ -209,7 +208,7 @@ require __DIR__ . "/includes/header.php";
 <h1 class="page-title">Checkout</h1>
 <?php if (!$items): ?>
     <div class="empty">
-        Your cart is empty. <a href="/clothing-store-backup/shop.php">Shop now</a>
+        Your cart is empty. <a href="<?= APP_BASE ?>/shop.php">Shop now</a>
     </div>
 <?php else: ?>
     <div class="row">

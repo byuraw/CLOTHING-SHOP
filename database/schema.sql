@@ -28,7 +28,6 @@ CREATE TABLE addresses (
     recipient_name VARCHAR(160) NOT NULL,
     phone VARCHAR(30) NOT NULL,
     address_line1 VARCHAR(190) NOT NULL,
-    address_line2 VARCHAR(190) NULL,
     city VARCHAR(100) NOT NULL,
     province VARCHAR(100) NOT NULL,
     postal_code VARCHAR(20) NOT NULL,
@@ -97,8 +96,7 @@ CREATE TABLE sizes (
 
 CREATE TABLE colors (
     color_id SMALLINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    color_name VARCHAR(50) NOT NULL UNIQUE,
-    color_code CHAR(7) NULL
+    color_name VARCHAR(50) NOT NULL UNIQUE
 ) ENGINE = InnoDB;
 
 CREATE TABLE product_variants (
@@ -170,6 +168,7 @@ CREATE TABLE order_items (
     color_snapshot VARCHAR(50) NULL,
     unit_price DECIMAL(10, 2) NOT NULL,
     quantity INT UNSIGNED NOT NULL,
+    -- Stored snapshot of unit_price * quantity at time of order.
     line_total DECIMAL(10, 2) NOT NULL,
     CHECK (
         unit_price >= 0
@@ -192,27 +191,11 @@ CREATE TABLE payments (
     payment_method_id TINYINT UNSIGNED NOT NULL,
     amount DECIMAL(10, 2) NOT NULL,
     payment_status ENUM('pending', 'paid', 'failed', 'refunded') NOT NULL DEFAULT 'pending',
-    reference_number VARCHAR(100) NULL,
-    paid_at DATETIME NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CHECK (amount >= 0),
     FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
     FOREIGN KEY (payment_method_id) REFERENCES payment_methods (payment_method_id),
     INDEX idx_payments_order_status (order_id, payment_status)
-) ENGINE = InnoDB;
-
-CREATE TABLE complete_transactions (
-    complete_transaction_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-    order_id BIGINT UNSIGNED NOT NULL UNIQUE,
-    transaction_reference VARCHAR(80) NOT NULL UNIQUE,
-    total_amount DECIMAL(10, 2) NOT NULL,
-    payment_method_id TINYINT UNSIGNED NULL,
-    completed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    notes VARCHAR(255) NULL,
-    CHECK (total_amount >= 0),
-    FOREIGN KEY (order_id) REFERENCES orders (order_id) ON DELETE CASCADE,
-    FOREIGN KEY (payment_method_id) REFERENCES payment_methods (payment_method_id) ON DELETE SET NULL,
-    INDEX idx_complete_transactions_date (completed_at)
 ) ENGINE = InnoDB;
 
 CREATE TABLE sales (
@@ -238,12 +221,12 @@ BEGIN
         SELECT order_status_id FROM order_statuses WHERE status_name = 'Completed'
     )
     THEN
-        INSERT INTO complete_transactions (
+        INSERT INTO sales (
             order_id,
             transaction_reference,
             total_amount,
             payment_method_id,
-            completed_at,
+            sale_date,
             notes
         )
         VALUES (
@@ -253,7 +236,13 @@ BEGIN
             NULL,
             NEW.placed_at,
             'Auto-recorded when order was created as completed'
-        );
+        )
+        ON DUPLICATE KEY UPDATE
+            transaction_reference = VALUES(transaction_reference),
+            total_amount = VALUES(total_amount),
+            payment_method_id = VALUES(payment_method_id),
+            sale_date = VALUES(sale_date),
+            notes = VALUES(notes);
     END IF;
 END$$
 CREATE TRIGGER trg_orders_completed_to_transaction
@@ -265,19 +254,21 @@ BEGIN
     )
        AND (OLD.order_status_id IS NULL OR OLD.order_status_id <> NEW.order_status_id)
     THEN
-        INSERT INTO complete_transactions (
+        INSERT INTO sales (
             order_id,
             transaction_reference,
             total_amount,
             payment_method_id,
-            notes
+            notes,
+            sale_date
         )
         SELECT
             NEW.order_id,
             CONCAT('TXN-', NEW.order_id, '-', DATE_FORMAT(NOW(), '%Y%m%d%H%i%s')),
             NEW.total_amount,
             p.payment_method_id,
-            'Auto-recorded when order was marked completed'
+            'Auto-recorded when order was marked completed',
+            CURRENT_TIMESTAMP
         FROM (
             SELECT 1 AS dummy
         ) AS base
@@ -285,45 +276,20 @@ BEGIN
             SELECT payment_method_id, order_id
             FROM payments
             WHERE order_id = NEW.order_id
-            ORDER BY paid_at DESC, payment_id DESC
+            ORDER BY created_at DESC, payment_id DESC
             LIMIT 1
         ) AS p ON p.order_id = NEW.order_id
         ON DUPLICATE KEY UPDATE
+            transaction_reference = VALUES(transaction_reference),
             total_amount = VALUES(total_amount),
             payment_method_id = VALUES(payment_method_id),
-            completed_at = CURRENT_TIMESTAMP,
-            notes = VALUES(notes);
+            notes = VALUES(notes),
+            sale_date = VALUES(sale_date);
     END IF;
-END$$
-CREATE TRIGGER trg_complete_transaction_to_sales
-AFTER INSERT ON complete_transactions
-FOR EACH ROW
-BEGIN
-    INSERT INTO sales (
-        order_id,
-        transaction_reference,
-        total_amount,
-        payment_method_id,
-        notes,
-        sale_date
-    )
-    VALUES (
-        NEW.order_id,
-        NEW.transaction_reference,
-        NEW.total_amount,
-        NEW.payment_method_id,
-        NEW.notes,
-        NEW.completed_at
-    )
-    ON DUPLICATE KEY UPDATE
-        transaction_reference = VALUES(transaction_reference),
-        total_amount = VALUES(total_amount),
-        payment_method_id = VALUES(payment_method_id),
-        notes = VALUES(notes),
-        sale_date = VALUES(sale_date);
 END$$
 DELIMITER ;
 
+-- Audit log: written by the app, not yet shown in the UI.
 CREATE TABLE order_status_history (
     history_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     order_id BIGINT UNSIGNED NOT NULL,
@@ -337,6 +303,7 @@ CREATE TABLE order_status_history (
     INDEX idx_history_order_time (order_id, changed_at)
 ) ENGINE = InnoDB;
 
+-- Audit log: written by the app, not yet shown in the UI.
 CREATE TABLE inventory_transactions (
     inventory_transaction_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     variant_id BIGINT UNSIGNED NOT NULL,
@@ -428,11 +395,11 @@ VALUES
     (7, 'One Size');
 
 INSERT INTO
-    colors (color_id, color_name, color_code)
+    colors (color_id, color_name)
 VALUES
-    (1, 'Black', '#000000'),
-    (2, 'White', '#FFFFFF'),
-    (3, 'Blue', '#0000FF');
+    (1, 'Black'),
+    (2, 'White'),
+    (3, 'Blue');
 
 CREATE TABLE product_reviews (
     review_id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -450,30 +417,3 @@ CREATE TABLE product_reviews (
     UNIQUE KEY uq_review_user_order_item (user_id, order_item_id),
     INDEX idx_reviews_product (product_id, created_at)
 ) ENGINE = InnoDB;
-
-CREATE OR REPLACE VIEW vw_order_transaction_details AS
-SELECT
-    o.order_id,
-    o.order_number,
-    o.placed_at,
-    o.subtotal,
-    o.shipping_fee,
-    o.total_amount,
-    os.status_name,
-    u.user_id,
-    u.first_name,
-    u.last_name,
-    u.email,
-    oi.order_item_id,
-    oi.product_name_snapshot,
-    oi.sku_snapshot,
-    oi.size_snapshot,
-    oi.color_snapshot,
-    oi.unit_price,
-    oi.quantity,
-    oi.line_total
-FROM
-    orders o
-    JOIN users u ON u.user_id = o.user_id
-    JOIN order_statuses os ON os.order_status_id = o.order_status_id
-    JOIN order_items oi ON oi.order_id = o.order_id;

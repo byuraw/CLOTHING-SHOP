@@ -38,7 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
                 if ($error === "") {
                     flash("Expense updated.");
-                    redirect("/clothing-store-backup/admin/expenses.php");
+                    redirect(APP_BASE . "/admin/expenses.php");
                 }
                 $editExpense = [
                     "expense_id" => $expenseId,
@@ -60,7 +60,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $notes,
             ]);
             flash("Expense recorded.");
-            redirect("/clothing-store-backup/admin/expenses.php");
+            redirect(APP_BASE . "/admin/expenses.php");
         } else {
             $error = "Choose a valid expense action.";
         }

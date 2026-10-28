@@ -15,5 +15,5 @@ if (ini_get("session.use_cookies")) {
     );
 }
 session_destroy();
-header("Location: /clothing-store-backup/index.php");
+header("Location: " . APP_BASE . "/index.php");
 exit();

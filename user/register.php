@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . "/../includes/functions.php";
 if (current_user()) {
-    redirect("/clothing-store-backup/index.php");
+    redirect(APP_BASE . "/index.php");
 }
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -41,7 +41,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $st,
             ]);
             flash("Account created. You can now sign in.");
-            redirect("/clothing-store-backup/user/login.php");
+            redirect(APP_BASE . "/user/login.php");
         } catch (PDOException $e) {
             $error =
                 $e->getCode() === "23000"
@@ -74,6 +74,6 @@ require __DIR__ . "/../includes/header.php";
   ) ?>" /><label>Profile photo (optional)</label><input type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif" /><label
     >Password</label
   ><input type="password" name="password" /><button>Create account</button>
-  <p>Already registered? <a href="/clothing-store-backup/user/login.php">Sign in</a></p>
+  <p>Already registered? <a href="<?= APP_BASE ?>/user/login.php">Sign in</a></p>
 </form>
 <?php require __DIR__ . "/../includes/footer.php"; ?>

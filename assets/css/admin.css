@@ -78,13 +78,6 @@ a:hover {
     color: #fff;
     opacity: 1;
 }
-.side .grp {
-    font-size: 10.5px;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: #7a7d82;
-    padding: 18px 22px 6px;
-}
 .side .spacer {
     flex: 1;
 }
@@ -578,18 +571,6 @@ td .row > button {
     font-weight: 700;
     margin-top: 6px;
 }
-.admin-links {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 14px;
-}
-.admin-links a {
-    padding: 18px;
-    background: #fff;
-    border: 1px solid #e6e6e6;
-    border-radius: 10px;
-    color: #1d1f22;
-}
 .notice {
     padding: 11px 16px;
     background: #e3e8f2;
@@ -608,9 +589,6 @@ td .row > button {
     border: 1px dashed #d9d9d9;
     border-radius: 10px;
     color: #7a7d82;
-}
-.inline {
-    display: inline;
 }
 .quantity {
     width: 90px;
@@ -644,7 +622,6 @@ td .row > button {
         flex-wrap: wrap;
         gap: 4px;
     }
-    .side .grp,
     .side .spacer {
         display: none;
     }

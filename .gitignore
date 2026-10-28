@@ -10,6 +10,8 @@ node_modules/
 *.log
 .DS_Store
 Thumbs.db
+uploads/profiles/*
+!uploads/profiles/.gitkeep
 
 # Local database backups
 *.sql.zip

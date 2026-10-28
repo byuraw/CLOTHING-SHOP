@@ -45,55 +45,34 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "SELECT variant_id,quantity FROM order_items WHERE order_id=? AND variant_id IS NOT NULL",
                 );
                 $lines->execute([$id]);
+                $restock = $pdo->prepare(
+                    "UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?",
+                );
                 foreach ($lines->fetchAll() as $line) {
-                    $pdo->prepare(
-                        "UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?",
-                    )->execute([$line["quantity"], $line["variant_id"]]);
-                    $pdo->prepare(
-                        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,'RESTOCK',?)",
-                    )->execute([
-                        $line["variant_id"],
-                        current_user()["id"],
+                    $restock->execute([
                         $line["quantity"],
-                        $old["order_number"],
+                        $line["variant_id"],
                     ]);
+                    log_inventory(
+                        $pdo,
+                        (int) $line["variant_id"],
+                        (int) current_user()["id"],
+                        (int) $line["quantity"],
+                        "RESTOCK",
+                        $old["order_number"],
+                    );
                 }
             }
             $pdo->prepare(
                 "UPDATE orders SET order_status_id=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?",
             )->execute([$new, $id]);
-            if ($newLabel === "Completed") {
-                $payment = $pdo->prepare(
-                    "SELECT payment_method_id FROM payments WHERE order_id=? ORDER BY paid_at DESC, payment_id DESC LIMIT 1",
-                );
-                $payment->execute([$id]);
-                $paymentRow = $payment->fetch();
-                $complete = $pdo->prepare(
-                    "INSERT INTO complete_transactions(order_id,transaction_reference,total_amount,payment_method_id,notes)
-                    VALUES(?,?,?,?,?)
-                    ON DUPLICATE KEY UPDATE
-                        total_amount=VALUES(total_amount),
-                        payment_method_id=VALUES(payment_method_id),
-                        completed_at=CURRENT_TIMESTAMP,
-                        notes=VALUES(notes)",
-                );
-                $complete->execute([
-                    $id,
-                    "TXN-" . $id . "-" . date("YmdHis"),
-                    (float) $old["total_amount"],
-                    $paymentRow["payment_method_id"] ?? null,
-                    "Auto-recorded when order was marked completed",
-                ]);
-            }
-            $hist = $pdo->prepare(
-                "INSERT INTO order_status_history(order_id,order_status_id,changed_by,note) VALUES(?,?,?,?)",
-            );
-            $hist->execute([
+            log_order_status(
+                $pdo,
                 $id,
                 $new,
-                current_user()["id"],
+                (int) current_user()["id"],
                 "Changed from " . $oldLabel . " to " . $newLabel,
-            ]);
+            );
         }
         $pdo->commit();
         try {
@@ -102,7 +81,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             error_log("Order status email failed: " . $mailError->getMessage());
         }
         flash("Order status updated.");
-        redirect("/clothing-store-backup/admin/orders.php");
+        redirect(APP_BASE . "/admin/orders.php");
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();

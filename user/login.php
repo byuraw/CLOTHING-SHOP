@@ -3,8 +3,8 @@ require_once __DIR__ . "/../includes/functions.php";
 if (current_user()) {
     redirect(
         (current_user()["role"] ?? "") === "Admin"
-            ? "/clothing-store-backup/admin/index.php"
-            : "/clothing-store-backup/index.php",
+            ? APP_BASE . "/admin/index.php"
+            : APP_BASE . "/index.php",
     );
 }
 $error = "";
@@ -38,8 +38,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             flash("Welcome back, " . $u["first_name"] . ".");
             redirect(
                 $u["role_name"] === "Admin"
-                    ? "/clothing-store-backup/admin/index.php"
-                    : "/clothing-store-backup/index.php",
+                    ? APP_BASE . "/admin/index.php"
+                    : APP_BASE . "/index.php",
             );
         }
         $error = "Email or password is incorrect, or the account is inactive.";
@@ -60,6 +60,6 @@ require __DIR__ . "/../includes/header.php";
     $_POST["email"] ?? "",
 ) ?>" /><label>Password</label
   ><input type="password" name="password" /><button>Sign in</button>
-  <p>New here? <a href="/clothing-store-backup/user/register.php">Create an account</a></p>
+  <p>New here? <a href="<?= APP_BASE ?>/user/register.php">Create an account</a></p>
 </form>
 <?php require __DIR__ . "/../includes/footer.php"; ?>

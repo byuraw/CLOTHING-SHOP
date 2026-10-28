@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-/* PDO connection for clothing_store_backup. Optional overrides:
+/* Wearwell Clothing PDO connection for the clothing_store_fixed database. Optional overrides:
  CLOTHING_DB_HOST, CLOTHING_DB_NAME, CLOTHING_DB_USER, CLOTHING_DB_PASS. */
 $host = getenv("CLOTHING_DB_HOST") ?: "127.0.0.1";
 $dbname = getenv("CLOTHING_DB_NAME") ?: "clothing_store_fixed";
@@ -19,7 +19,7 @@ try {
     ]);
 } catch (PDOException $exception) {
     error_log(
-        "Clothing store database connection failed: " .
+        "Wearwell Clothing database connection failed: " .
             $exception->getMessage(),
     );
     http_response_code(500);
