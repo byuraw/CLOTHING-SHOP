@@ -16,6 +16,7 @@ $q = $pdo->prepare(
       AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)",
 );
 $q->execute($args);
+
 $summary = $q->fetch();
 $transactionQuery = $pdo->prepare(
     "SELECT

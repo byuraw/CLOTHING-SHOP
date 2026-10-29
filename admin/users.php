@@ -70,7 +70,7 @@ require __DIR__ . "/../includes/admin_header.php";
 <div class="notice error"><?= e($error) ?></div>
 <?php endif; ?>
 
-<div class="table-wrap">
+<div class="table-wrap" data-table-filter-target>
   <table>
     <thead>
       <tr>
@@ -86,7 +86,16 @@ require __DIR__ . "/../includes/admin_header.php";
     <tbody>
       <?php foreach ($users as $u): ?>
 
-      <tr>
+      <tr data-search="<?= e(
+          implode(" ", [
+              $u["first_name"],
+              $u["last_name"],
+              $u["email"],
+              $u["role_name"],
+              $u["status_name"],
+              $u["created_at"],
+          ]),
+      ) ?>">
         <td><?= e($u["first_name"] . " " . $u["last_name"]) ?></td>
         <td><?= e($u["email"]) ?></td>
         <td>

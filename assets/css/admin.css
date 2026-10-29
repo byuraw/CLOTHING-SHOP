@@ -381,6 +381,14 @@ th {
 .update-product-toolbar .search {
     flex: 0 1 420px;
 }
+.product-delete-filters {
+    align-items: flex-end;
+    margin: 12px 0;
+}
+.product-delete-filters label {
+    min-width: 150px;
+    margin: 0;
+}
 .product-edit-form {
     width: 100%;
     max-width: none;
@@ -470,6 +478,12 @@ button.secondary,
 button.secondary:hover,
 .button.secondary:hover {
     background: #f0f0f0;
+}
+button.danger {
+    background: #a33b3b;
+}
+button.danger:hover {
+    background: #852e2e;
 }
 .form-card button {
     margin-top: 16px;

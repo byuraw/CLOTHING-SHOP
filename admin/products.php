@@ -238,6 +238,40 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 throw $e;
             }
             flash("Product, initial variant, and photos created.");
+        } elseif ($action === "delete") {
+            $pid = filter_var(
+                $_POST["product_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            if ($pid === false || $pid < 1) {
+                throw new RuntimeException("Choose a valid product.");
+            }
+            $pdo->beginTransaction();
+            try {
+                $product = $pdo->prepare(
+                    "SELECT product_id FROM products WHERE product_id=? AND is_active=1 FOR UPDATE",
+                );
+                $product->execute([$pid]);
+                if (!$product->fetchColumn()) {
+                    throw new RuntimeException("Choose an active product.");
+                }
+                $pdo->prepare(
+                    "UPDATE products SET is_active=0 WHERE product_id=?",
+                )->execute([$pid]);
+                $pdo->prepare(
+                    "UPDATE product_variants SET is_active=0 WHERE product_id=?",
+                )->execute([$pid]);
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw $e;
+            }
+            flash("Product deleted successfully and removed from the store.");
+            redirect(
+                APP_BASE . "/admin/products.php#update-product-panel",
+            );
         } elseif ($action === "edit") {
             $pid = (int) ($_POST["product_id"] ?? 0);
             $name = trim($_POST["product_name"] ?? "");
@@ -496,7 +530,29 @@ $restockQuery->execute($restockArgs);
 $restockVariants = $restockQuery->fetchAll();
 $list = $pdo
     ->query(
-        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.product_type_id,p.base_price,pc.category_name,pt.type_name,(SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.product_id AND v.is_active=1) variants FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.is_active=1 ORDER BY p.created_at DESC",
+        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.product_type_id,p.base_price,pc.category_name,pt.type_name,
+            (SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.product_id AND v.is_active=1) variants
+        FROM products p
+        JOIN product_categories pc ON pc.product_category_id=p.product_category_id
+        JOIN product_types pt ON pt.product_type_id=p.product_type_id
+        WHERE p.is_active=1
+        ORDER BY p.created_at DESC",
+    )
+    ->fetchAll();
+$deleteList = $pdo
+    ->query(
+        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.base_price,
+            pc.category_name,pt.type_name,v.size_id,v.color_id,
+            COALESCE(s.size_name,'One size') size_name,
+            COALESCE(c.color_name,'Default') color_name
+        FROM products p
+        JOIN product_categories pc ON pc.product_category_id=p.product_category_id
+        JOIN product_types pt ON pt.product_type_id=p.product_type_id
+        LEFT JOIN product_variants v ON v.product_id=p.product_id AND v.is_active=1
+        LEFT JOIN sizes s ON s.size_id=v.size_id
+        LEFT JOIN colors c ON c.color_id=v.color_id
+        WHERE p.is_active=1
+        ORDER BY p.created_at DESC,p.product_name,s.size_name,c.color_name",
     )
     ->fetchAll();
 $pageTitle = "Products";
@@ -528,6 +584,15 @@ require __DIR__ . "/../includes/admin_header.php";
     aria-selected="false"
     data-product-tab="update-product-panel"
   >Update product</button>
+  <button
+    type="button"
+    class="product-tab"
+    id="delete-product-tab"
+    role="tab"
+    aria-controls="delete-product-panel"
+    aria-selected="false"
+    data-product-tab="delete-product-panel"
+  >Delete product</button>
   <button
     type="button"
     class="product-tab"
@@ -644,9 +709,9 @@ require __DIR__ . "/../includes/admin_header.php";
 <div class="update-product-toolbar">
   <div class="search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-    <label for="q" class="sr-only">Search products to update</label>
+    <label for="update-product-search" class="sr-only">Search products to update</label>
     <input
-      id="q"
+      id="update-product-search"
       type="search"
       placeholder="Search products by name, category, type, description…"
       data-table-filter
@@ -701,6 +766,103 @@ require __DIR__ . "/../includes/admin_header.php";
     </tbody>
   </table>
 </div>
+</section>
+
+<section
+  class="product-tab-panel"
+  id="delete-product-panel"
+  role="tabpanel"
+  aria-labelledby="delete-product-tab"
+  data-product-panel
+  hidden
+>
+  <div class="update-product-toolbar">
+    <div class="search">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      <label for="delete-product-search" class="sr-only">Search products to delete</label>
+      <input
+        id="delete-product-search"
+        type="search"
+        placeholder="Search products by name, category, type, description…"
+        data-table-filter
+      >
+    </div>
+  </div>
+  <div class="row product-delete-filters">
+    <label for="delete-category-filter">Category
+      <select id="delete-category-filter" data-product-filter="category">
+        <option value="">All categories</option>
+        <?php foreach ($cats as $category): ?>
+          <option value="<?= (int) $category["product_category_id"] ?>"><?= e($category["category_name"]) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label for="delete-size-filter">Size
+      <select id="delete-size-filter" data-product-filter="size">
+        <option value="">All sizes</option>
+        <?php foreach ($sizes as $size): ?>
+          <option value="<?= (int) $size["size_id"] ?>"><?= e($size["size_name"]) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+    <label for="delete-color-filter">Color
+      <select id="delete-color-filter" data-product-filter="color">
+        <option value="">All colors</option>
+        <?php foreach ($colors as $color): ?>
+          <option value="<?= (int) $color["color_id"] ?>"><?= e($color["color_name"]) ?></option>
+        <?php endforeach; ?>
+      </select>
+    </label>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Product</th>
+          <th>Category / type</th>
+          <th>Size</th>
+          <th>Color</th>
+          <th>Price</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <?php foreach ($deleteList as $p): ?>
+          <tr
+            data-search="<?= e(implode(" ", [
+                $p["product_id"],
+                $p["product_name"],
+                $p["description"] ?? "",
+                $p["category_name"],
+                $p["type_name"],
+                $p["size_name"],
+                $p["color_name"],
+                $p["base_price"],
+            ])) ?>"
+            data-category="<?= (int) $p["product_category_id"] ?>"
+            data-variant-options="<?= (int) ($p["size_id"] ?? 0) ?>:<?= (int) ($p["color_id"] ?? 0) ?>"
+          >
+            <td><strong><?= e($p["product_name"]) ?></strong></td>
+            <td><?= e($p["category_name"] . " / " . $p["type_name"]) ?></td>
+            <td><?= e($p["size_name"]) ?></td>
+            <td><?= e($p["color_name"]) ?></td>
+            <td>₱<?= number_format((float) $p["base_price"], 2) ?></td>
+            <td>
+              <form method="post" onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">
+                <button type="submit" class="danger">Delete</button>
+              </form>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        <?php if (!$deleteList): ?>
+          <tr><td colspan="6" class="empty-note">No products available to delete.</td></tr>
+        <?php endif; ?>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <section

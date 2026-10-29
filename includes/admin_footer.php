@@ -90,37 +90,78 @@
         if (initialTabButton) activateTab(initialTabButton);
     }
 
+    function filterPanel(panel) {
+        var search = panel.querySelector('[data-table-filter]');
+        var query = search ? search.value.trim().toLowerCase() : '';
+        var category = panel.querySelector('[data-product-filter="category"]');
+        var size = panel.querySelector('[data-product-filter="size"]');
+        var color = panel.querySelector('[data-product-filter="color"]');
+        var categoryId = category ? category.value : '';
+        var sizeId = size ? size.value : '';
+        var colorId = color ? color.value : '';
+
+        panel.querySelectorAll('tbody tr').forEach(function (row) {
+            var searchable = row.getAttribute('data-search') || row.textContent;
+            var variantOptions = (row.getAttribute('data-variant-options') || '').split(',');
+            var matchesVariant = (!sizeId && !colorId) || variantOptions.some(function (option) {
+                var ids = option.split(':');
+                return (!sizeId || ids[0] === sizeId) &&
+                    (!colorId || ids[1] === colorId);
+            });
+            var matchesCategory = !categoryId ||
+                row.getAttribute('data-category') === categoryId;
+            row.style.display =
+                (!query || searchable.toLowerCase().includes(query)) &&
+                matchesCategory && matchesVariant
+                    ? ''
+                    : 'none';
+        });
+
+        if (productEditForm && panel.id === 'update-product-panel') {
+            var selectedRow = panel.querySelector('tr.selected-product-row');
+            if (selectedRow && selectedRow.style.display === 'none') {
+                productEditForm.reset();
+                document.getElementById('edit-product-id').value = '';
+                ['edit-product-name', 'edit-product-description', 'edit-product-category', 'edit-product-type', 'edit-product-price', 'save-product-edit'].forEach(function (id) {
+                    document.getElementById(id).disabled = true;
+                });
+                selectedRow.classList.remove('selected-product-row');
+                document.getElementById('product-edit-prompt').textContent =
+                    'Select a product from the table below to load its details.';
+            }
+        }
+    }
+
     filterInputs.forEach(function (input) {
         input.addEventListener('input', function () {
             var panel = input.closest('[data-product-panel]');
-            if (!panel) return;
-            var query = input.value.trim().toLowerCase();
-            if (query) {
-                tabs.forEach(function (tab) {
-                    if (tab.getAttribute('data-product-tab') === panel.id) {
-                        activateTab(tab);
-                    }
-                });
+            var target = panel || document.querySelector('[data-table-filter-target]');
+            if (!target) return;
+            var query = input.value.trim();
+            if (panel) {
+                if (query) {
+                    tabs.forEach(function (tab) {
+                        if (tab.getAttribute('data-product-tab') === panel.id) {
+                            activateTab(tab);
+                        }
+                    });
+                }
+                filterPanel(panel);
+                return;
             }
-            panel.querySelectorAll('tbody tr').forEach(function (row) {
+            target.querySelectorAll('tbody tr').forEach(function (row) {
                 var searchable = row.getAttribute('data-search') || row.textContent;
-                row.style.display = !query || searchable.toLowerCase().includes(query)
+                row.style.display = !query || searchable.toLowerCase().includes(query.toLowerCase())
                     ? ''
                     : 'none';
             });
-            if (productEditForm && panel.id === 'update-product-panel') {
-                var selectedRow = panel.querySelector('tr.selected-product-row');
-                if (selectedRow && selectedRow.style.display === 'none') {
-                    productEditForm.reset();
-                    document.getElementById('edit-product-id').value = '';
-                    ['edit-product-name', 'edit-product-description', 'edit-product-category', 'edit-product-type', 'edit-product-price', 'save-product-edit'].forEach(function (id) {
-                        document.getElementById(id).disabled = true;
-                    });
-                    selectedRow.classList.remove('selected-product-row');
-                    document.getElementById('product-edit-prompt').textContent =
-                        'Select a product from the table below to load its details.';
-                }
-            }
+        });
+    });
+
+    document.querySelectorAll('[data-product-filter]').forEach(function (filter) {
+        filter.addEventListener('change', function () {
+            var panel = filter.closest('[data-product-panel]');
+            if (panel) filterPanel(panel);
         });
     });
 })();

@@ -118,7 +118,7 @@ require __DIR__ . "/../includes/admin_header.php";
 <div class="notice error"><?= e($error) ?></div>
 <?php endif; ?>
 
-<div class="table-wrap">
+<div class="table-wrap" data-table-filter-target>
   <table>
     <thead>
       <tr>
@@ -133,7 +133,17 @@ require __DIR__ . "/../includes/admin_header.php";
     <tbody>
       <?php foreach ($orders as $o): ?>
 
-      <tr>
+      <tr data-search="<?= e(
+          implode(" ", [
+              $o["order_number"],
+              $o["first_name"],
+              $o["last_name"],
+              $o["placed_at"],
+              $o["total_amount"],
+              $o["payment_amount"] ?? "",
+              $o["status_name"],
+          ]),
+      ) ?>">
         <td><?= e($o["order_number"]) ?></td>
         <td><?= e($o["first_name"] . " " . $o["last_name"]) ?></td>
         <td><?= e($o["placed_at"]) ?></td>

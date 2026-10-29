@@ -124,7 +124,7 @@ function upload_image(array $file, string $folder): ?string
 
 function moderate_review(string $text): string
 {
-    $words = ["fuck", "shit", "bitch", "asshole", "bastard", "damn"];
+    $words = ["nigga", "fuck", "shit", "bitch", "asshole", "bastard", "damn", "cunt", "bobo", "gago", "tangina","bading"];
     foreach ($words as $word) {
         $text =
             preg_replace(

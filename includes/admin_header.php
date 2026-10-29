@@ -5,6 +5,12 @@ $pageTitle = $pageTitle ?? "Dashboard";
 $notice = $_SESSION["flash"] ?? null;
 unset($_SESSION["flash"]);
 $here = basename($_SERVER["SCRIPT_NAME"] ?? "index.php");
+$searchPlaceholder =
+    $here === "orders.php"
+        ? "Search orders…"
+        : ($here === "users.php"
+            ? "Search customers…"
+            : "Search this page…");
 $initial = strtoupper(substr(current_user()["name"] ?? "A", 0, 1));
 
 $icons = [
@@ -107,7 +113,7 @@ $links = [
                     <input
                         id="q"
                         type="search"
-                        placeholder="Search orders, products, customers…"
+                        placeholder="<?= e($searchPlaceholder) ?>"
                         data-table-filter
                     >
                 </div>

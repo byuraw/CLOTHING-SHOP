@@ -15,7 +15,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             JOIN products p ON p.product_id=pv.product_id
             LEFT JOIN sizes sz ON sz.size_id=pv.size_id
             LEFT JOIN colors co ON co.color_id=pv.color_id
-            WHERE ci.user_id=? FOR UPDATE',
+            WHERE ci.user_id=? AND pv.is_active=1 AND p.is_active=1 FOR UPDATE',
         );
         $s->execute([$uid]);
         $items = $s->fetchAll();
@@ -173,7 +173,7 @@ $q = $pdo->prepare(
     FROM cart_items ci
     JOIN product_variants pv ON pv.variant_id=ci.variant_id
     JOIN products p ON p.product_id=pv.product_id
-    WHERE ci.user_id=?',
+    WHERE ci.user_id=? AND pv.is_active=1 AND p.is_active=1',
 );
 $q->execute([current_user()["id"]]);
 $items = $q->fetchAll();
