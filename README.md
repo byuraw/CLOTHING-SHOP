@@ -13,12 +13,15 @@ admin panel for products, orders, inventory, and reports.
 ## Setup
 
 1. Place the project in your web server's document root.
-2. Create and seed the database by importing `database/schema.sql` in MySQL.
-   The schema creates and selects the `clothing_store_fixed` database.
-   For an existing installation, run `database/upgrade_legacy_cleanup.sql`
-   against that database before using the updated application.
-3. To load the demo customer accounts and sample store data, import
-   `database/migrations/006_sample_business_data.sql` after the schema.
+2. To restore the existing store data on a new device, import
+   `database/clothing_store_backup.sql` using phpMyAdmin or the MySQL client.
+   The snapshot creates and selects the `clothing_store_fixed` database and
+   includes its tables and records. Importing it replaces tables with the same
+   names, so back up an existing database first. For a clean database without
+   the captured store records, import `database/schema.sql` instead.
+3. For an existing installation that needs the legacy cleanup, run
+   `database/upgrade_legacy_cleanup.sql` against that database before using
+   the updated application.
 4. Install PHP dependencies from the project root:
 
    ```sh
@@ -46,17 +49,16 @@ admin panel for products, orders, inventory, and reports.
 6. Open the project through the local web server. Configure the application's
    base URL if the project is not hosted at the expected local path.
 
-## Demo logins
+To refresh the snapshot from the current local XAMPP database, run this from the
+project root after making database changes:
 
-The sample business-data script (`database/migrations/006_sample_business_data.sql`)
-creates six customer accounts (`alex.reyes.demo@example.com`,
-`mika.santos.demo@example.com`, `jordan.cruz.demo@example.com`,
-`sam.garcia.demo@example.com`, `taylor.delacruz.demo@example.com`, and
-`casey.mendoza.demo@example.com`) with the shared password `DemoPass123!`.
+```bat
+C:\xampp\mysql\bin\mysqldump.exe --protocol=TCP --host=127.0.0.1 --user=root --single-transaction --routines --triggers --events --hex-blob --default-character-set=utf8mb4 --no-tablespaces --databases clothing_store_fixed --result-file="database\clothing_store_backup.sql"
+```
 
-The schema creates `admin@example.com`, but does not document its plaintext
-password. Set or reset the admin password before using that account; do not
-assume a default password.
+The snapshot contains account and order data; keep it private and share it only
+with devices that should have access to that data. It does not bundle uploaded
+images; copy the project's `uploads/` directory separately when moving devices.
 
 ## Folder structure
 
@@ -64,7 +66,7 @@ assume a default password.
 admin/       Admin dashboard, products, orders, inventory, and reports
 assets/      CSS, JavaScript, and image assets
 config/      Database and Mailtrap configuration
-database/    Schema and sample-data migrations
+database/    Schema, database backup, and migrations
 includes/    Shared functions, page layouts, and email templates
 uploads/     Uploaded product images and profile photos
 user/        Customer registration, login, profile, and address pages

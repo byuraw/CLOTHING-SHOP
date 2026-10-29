@@ -431,12 +431,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             redirect(
                 APP_BASE . "/admin/products.php#restock-product-panel",
             );
-        } elseif ($action === "archive") {
-            $q = $pdo->prepare(
-                "UPDATE products SET is_active=0 WHERE product_id=?",
-            );
-            $q->execute([(int) $_POST["product_id"]]);
-            flash("Product archived.");
         }
         redirect(APP_BASE . "/admin/products.php");
     } catch (Throwable $e) {
@@ -667,7 +661,6 @@ require __DIR__ . "/../includes/admin_header.php";
         <th>Category / type</th>
         <th>Price</th>
         <th>Variants</th>
-        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
@@ -699,21 +692,10 @@ require __DIR__ . "/../includes/admin_header.php";
         <td><?= e($p["category_name"] . " / " . $p["type_name"]) ?></td>
         <td>₱<?= number_format((float) $p["base_price"], 2) ?></td>
         <td><?= (int) $p["variants"] ?></td>
-        <td>
-          <form method="post" class="inline-form">
-            <input type="hidden" name="csrf" value="<?= e(
-                csrf_token(),
-            ) ?>" /><input type="hidden" name="action" value="archive" /><input type="hidden" name="product_id" value="<?= (int) $p[
-    "product_id"
-] ?>" /><button>
-              Archive
-            </button>
-          </form>
-        </td>
       </tr>
       <?php endforeach; ?>
       <?php if (!$list): ?>
-      <tr><td colspan="5" class="empty-note">No products yet. Create a product above to get started.</td></tr>
+      <tr><td colspan="4" class="empty-note">No products yet. Create a product above to get started.</td></tr>
       <?php endif; ?>
 
     </tbody>
