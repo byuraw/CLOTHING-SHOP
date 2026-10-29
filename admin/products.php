@@ -191,6 +191,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         "RESTOCK",
                         "Initial variant stock",
                     );
+                    $basePriceQuery = $pdo->prepare(
+                        "SELECT base_price FROM products WHERE product_id=?",
+                    );
+                    $basePriceQuery->execute([$newPid]);
+                    $expenseAmount = restock_expense_amount(
+                        (string) $basePriceQuery->fetchColumn(),
+                        $stock,
+                    );
+                    $expense = $pdo->prepare(
+                        "INSERT INTO expenses(recorded_by,expense_name,amount,expense_date,notes) VALUES(?,?,?,?,?)",
+                    );
+                    $expense->execute([
+                        current_user()["id"],
+                        "Adding Product",
+                        $expenseAmount,
+                        date("Y-m-d"),
+                        'Adding "' . $name . '" on the store',
+                    ]);
                 }
 
                 $image = $pdo->prepare(
@@ -424,24 +442,31 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $pdo->beginTransaction();
             try {
                 $variantQuery = $pdo->prepare(
-                    "SELECT v.stock_quantity
+                    "SELECT v.stock_quantity,p.base_price,p.product_name
                     FROM product_variants v
                     JOIN products p ON p.product_id=v.product_id
                     WHERE v.variant_id=? AND v.is_active=1 AND p.is_active=1
                     FOR UPDATE",
                 );
                 $variantQuery->execute([$variantId]);
-                $currentStock = $variantQuery->fetchColumn();
+                $currentStock = $variantQuery->fetch();
                 if ($currentStock === false) {
                     throw new RuntimeException(
                         "Choose an active product variant.",
                     );
                 }
-                if ($quantity > 4294967295 - (int) $currentStock) {
+                if (
+                    $quantity >
+                    4294967295 - (int) $currentStock["stock_quantity"]
+                ) {
                     throw new RuntimeException(
                         "The restock quantity exceeds the maximum stock level.",
                     );
                 }
+                $expenseAmount = restock_expense_amount(
+                    (string) $currentStock["base_price"],
+                    $quantity,
+                );
                 $saveStock = $pdo->prepare(
                     "UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?",
                 );
@@ -454,6 +479,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "RESTOCK",
                     "Product restock",
                 );
+                $expense = $pdo->prepare(
+                    "INSERT INTO expenses(recorded_by,expense_name,amount,expense_date,notes) VALUES(?,?,?,?,?)",
+                );
+                $expense->execute([
+                    current_user()["id"],
+                    "Product restock",
+                    $expenseAmount,
+                    date("Y-m-d"),
+                    "restock (" . $currentStock["product_name"] . ")",
+                ]);
                 $pdo->commit();
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {

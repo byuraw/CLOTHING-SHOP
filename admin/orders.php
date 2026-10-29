@@ -3,6 +3,34 @@ require_once __DIR__ . "/../includes/functions.php";
 require_once __DIR__ . "/../includes/order_email.php";
 require_admin();
 $error = "";
+$filterInput =
+    ($_SERVER["REQUEST_METHOD"] ?? "GET") === "POST" ? $_POST : $_GET;
+$fromDate = is_string($filterInput["from"] ?? null)
+    ? trim($filterInput["from"])
+    : "";
+$toDate = is_string($filterInput["to"] ?? null)
+    ? trim($filterInput["to"])
+    : "";
+$isValidDate = static function (string $value): bool {
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $value)) {
+        return false;
+    }
+    [$year, $month, $day] = array_map("intval", explode("-", $value));
+    return checkdate($month, $day, $year);
+};
+$invalidDateFilter =
+    ($fromDate !== "" && !$isValidDate($fromDate)) ||
+    ($toDate !== "" && !$isValidDate($toDate));
+if ($invalidDateFilter) {
+    $error = "Enter valid dates for the order date range.";
+} elseif (
+    $fromDate !== "" &&
+    $toDate !== "" &&
+    $fromDate > $toDate
+) {
+    $invalidDateFilter = true;
+    $error = "The start date must be on or before the end date.";
+}
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     csrf_check();
     $id = (int) ($_POST["order_id"] ?? 0);
@@ -81,7 +109,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             error_log("Order status email failed: " . $mailError->getMessage());
         }
         flash("Order status updated.");
-        redirect(APP_BASE . "/admin/orders.php");
+        $filters = array_filter(
+            ["from" => $fromDate, "to" => $toDate],
+            static fn($value) => $value !== "",
+        );
+        redirect(
+            APP_BASE .
+                "/admin/orders.php" .
+                ($filters ? "?" . http_build_query($filters) : ""),
+        );
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {
             $pdo->rollBack();
@@ -97,17 +133,35 @@ $statuses = $pdo
         "SELECT order_status_id,status_name FROM order_statuses ORDER BY order_status_id",
     )
     ->fetchAll();
-$orders = $pdo
-    ->query(
-        "SELECT o.order_id,o.order_number,o.total_amount,
-            (SELECT p.amount FROM payments p WHERE p.order_id=o.order_id ORDER BY p.created_at DESC,p.payment_id DESC LIMIT 1) AS payment_amount,
-            o.placed_at,os.status_name,u.first_name,u.last_name
-        FROM orders o
-        JOIN order_statuses os ON os.order_status_id=o.order_status_id
-        JOIN users u ON u.user_id=o.user_id
-        ORDER BY o.placed_at DESC",
-    )
-    ->fetchAll();
+$orderConditions = [];
+$orderParams = [];
+if ($invalidDateFilter) {
+    $orderConditions[] = "1=0";
+} else {
+    if ($fromDate !== "") {
+        $orderConditions[] = "o.placed_at>=?";
+        $orderParams[] = $fromDate;
+    }
+    if ($toDate !== "") {
+        $orderConditions[] = "o.placed_at<DATE_ADD(?, INTERVAL 1 DAY)";
+        $orderParams[] = $toDate;
+    }
+}
+$ordersQuery = $pdo->prepare(
+    "SELECT o.order_id,o.order_number,o.total_amount,
+        (SELECT p.amount FROM payments p WHERE p.order_id=o.order_id ORDER BY p.created_at DESC,p.payment_id DESC LIMIT 1) AS payment_amount,
+        o.placed_at,os.status_name,u.first_name,u.last_name
+    FROM orders o
+    JOIN order_statuses os ON os.order_status_id=o.order_status_id
+    JOIN users u ON u.user_id=o.user_id
+    " .
+        ($orderConditions
+            ? "WHERE " . implode(" AND ", $orderConditions)
+            : "") .
+        " ORDER BY o.placed_at DESC",
+);
+$ordersQuery->execute($orderParams);
+$orders = $ordersQuery->fetchAll();
 $pageTitle = "Orders";
 require __DIR__ . "/../includes/admin_header.php";
 ?>
@@ -117,6 +171,17 @@ require __DIR__ . "/../includes/admin_header.php";
 
 <div class="notice error"><?= e($error) ?></div>
 <?php endif; ?>
+
+<form class="row orders-date-filter" method="get">
+  <label for="orders-date-from">From
+    <input id="orders-date-from" type="date" name="from" value="<?= e($fromDate) ?>">
+  </label>
+  <label for="orders-date-to">To
+    <input id="orders-date-to" type="date" name="to" value="<?= e($toDate) ?>">
+  </label>
+  <button type="submit">Apply dates</button>
+  <a class="button secondary" href="<?= e(APP_BASE . "/admin/orders.php") ?>">Clear</a>
+</form>
 
 <div class="table-wrap" data-table-filter-target>
   <table>
@@ -160,7 +225,10 @@ require __DIR__ . "/../includes/admin_header.php";
                 csrf_token(),
             ) ?>" /><input type="hidden" name="order_id" value="<?= (int) $o[
     "order_id"
-] ?>" /><select name="status_id">
+] ?>" />
+            <input type="hidden" name="from" value="<?= e($fromDate) ?>">
+            <input type="hidden" name="to" value="<?= e($toDate) ?>">
+            <select name="status_id">
               <?php foreach ($statuses as $st): ?>
 
               <option value="<?= (int) $st["order_status_id"] ?>" <?= $o[
@@ -176,7 +244,10 @@ require __DIR__ . "/../includes/admin_header.php";
       </tr>
       <?php endforeach; ?>
       <?php if (!$orders): ?>
-      <tr><td colspan="6" class="empty-note">No orders have been placed yet.</td></tr>
+      <tr><td colspan="6" class="empty-note"><?= $fromDate !== "" ||
+      $toDate !== ""
+          ? "No orders match the selected date range."
+          : "No orders have been placed yet." ?></td></tr>
       <?php endif; ?>
 
     </tbody>

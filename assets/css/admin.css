@@ -502,6 +502,14 @@ button.danger:hover {
     flex: 0 0 auto;
     align-self: center;
 }
+.orders-date-filter {
+    align-items: flex-end;
+    max-width: 720px;
+}
+.orders-date-filter label {
+    flex: 1 1 180px;
+    margin: 0;
+}
 .transaction-filter {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

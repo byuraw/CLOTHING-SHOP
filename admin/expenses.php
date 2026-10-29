@@ -6,6 +6,24 @@ $editExpense = null;
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     csrf_check();
     $action = $_POST["action"] ?? "create";
+    if ($action === "delete") {
+        $expenseId = filter_var(
+            $_POST["expense_id"] ?? null,
+            FILTER_VALIDATE_INT,
+        );
+        if ($expenseId === false || $expenseId < 1) {
+            flash("Choose a valid expense to delete.", "error");
+            redirect(APP_BASE . "/admin/expenses.php");
+        }
+        $q = $pdo->prepare("DELETE FROM expenses WHERE expense_id=?");
+        $q->execute([$expenseId]);
+        if ($q->rowCount() !== 1) {
+            flash("Expense record not found.", "error");
+            redirect(APP_BASE . "/admin/expenses.php");
+        }
+        flash("Expense deleted.");
+        redirect(APP_BASE . "/admin/expenses.php");
+    }
     $name = trim($_POST["expense_name"] ?? "");
     $rawAmount = trim((string) ($_POST["amount"] ?? ""));
     $amount = filter_var($rawAmount, FILTER_VALIDATE_FLOAT);
@@ -131,9 +149,17 @@ require __DIR__ . "/../includes/admin_header.php";
         <td><?= e($x["expense_name"]) ?></td>
         <td><?= e($x["notes"] ?? "") ?></td>
         <td>₱<?= number_format((float) $x["amount"], 2) ?></td>
-        <td><a class="button secondary" href="<?= e(
-            APP_BASE . "/admin/expenses.php?edit=" . (int) $x["expense_id"],
-        ) ?>">Edit</a></td>
+        <td>
+          <a class="button secondary" href="<?= e(
+              APP_BASE . "/admin/expenses.php?edit=" . (int) $x["expense_id"],
+          ) ?>">Edit</a>
+          <form method="post" class="inline-form" onsubmit="return confirm('Delete this expense record? This action cannot be undone.');">
+            <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="expense_id" value="<?= (int) $x["expense_id"] ?>">
+            <button type="submit" class="danger">Delete</button>
+          </form>
+        </td>
       </tr>
       <?php if (
           $editExpense &&

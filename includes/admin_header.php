@@ -106,7 +106,9 @@ $links = [
     <div class="main">
         <header class="topbar">
             <h1><?= e($pageTitle) ?></h1>
-            <?php if ($here !== "products.php"): ?>
+            <?php if (
+                !in_array($here, ["index.php", "products.php", "catalog.php"], true)
+            ): ?>
                 <div class="search">
                     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
                     <label for="q" class="sr-only">Search this page</label>

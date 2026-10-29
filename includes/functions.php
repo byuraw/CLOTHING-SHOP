@@ -150,6 +150,43 @@ function log_inventory(
     $statement->execute([$variantId, $userId, $qty, $reason, $ref]);
 }
 
+function restock_expense_amount(string $basePrice, int $quantity): string
+{
+    if (
+        !preg_match('/^(\d{1,8})(?:\.(\d{1,2}))?$/D', $basePrice, $matches) ||
+        $quantity < 1
+    ) {
+        throw new RuntimeException("Invalid restock expense amount.");
+    }
+
+    $basePriceCents =
+        (int) $matches[1] * 100 +
+        (int) str_pad($matches[2] ?? "", 2, "0");
+    $maxExpenseCents = 9999999999;
+    if (
+        $basePriceCents > 0 &&
+        $quantity >
+            intdiv(
+                $maxExpenseCents * 10 + 4,
+                $basePriceCents * 9,
+            )
+    ) {
+        throw new RuntimeException(
+            "The restock expense exceeds the maximum allowed amount.",
+        );
+    }
+
+    $expenseCents = intdiv($basePriceCents * 9 * $quantity + 5, 10);
+    return intdiv($expenseCents, 100) .
+        "." .
+        str_pad(
+            (string) ($expenseCents % 100),
+            2,
+            "0",
+            STR_PAD_LEFT,
+        );
+}
+
 function log_order_status(
     PDO $pdo,
     int $orderId,
