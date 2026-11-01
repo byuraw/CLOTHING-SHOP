@@ -22,9 +22,15 @@ foreach (
         $filterError = "Choose a valid " . $label . " filter.";
     }
 }
-$sql = 'SELECT p.product_id,p.product_name,p.base_price,pi.image_path,c.category_name
+$sql = 'SELECT p.product_id,p.product_name,mp.min_price,mp.max_price,pi.image_path,c.category_name
     FROM products p
     JOIN product_categories c ON c.product_category_id=p.product_category_id
+    INNER JOIN (
+        SELECT product_id, MIN(price) AS min_price, MAX(price) AS max_price
+        FROM product_variants
+        WHERE is_active = 1
+        GROUP BY product_id
+    ) mp ON mp.product_id = p.product_id
     INNER JOIN product_images pi ON pi.image_id = (
         SELECT pi2.image_id
         FROM product_images pi2
@@ -193,10 +199,10 @@ require __DIR__ . "/includes/header.php";
                 <span class="muted"><?= e($p["category_name"]) ?></span>
                 <h3><?= e($p["product_name"]) ?></h3>
             </a>
-            <div class="price">₱<?= number_format(
-                (float) $p["base_price"],
-                2,
-            ) ?></div>
+            <div class="price"><?= e(price_label(
+                (float) $p["min_price"],
+                (float) $p["max_price"],
+            )) ?></div>
         </article>
     <?php endforeach; ?>
 </div>

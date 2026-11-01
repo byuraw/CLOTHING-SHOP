@@ -56,10 +56,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         } elseif ($action === "product") {
             $name = trim($_POST["product_name"] ?? "");
             $categoryId = (int) ($_POST["product_category_id"] ?? 0);
-            $price = filter_var(
-                $_POST["base_price"] ?? null,
-                FILTER_VALIDATE_FLOAT,
-            );
             $description = trim($_POST["description"] ?? "");
             $slug =
                 strtolower(
@@ -70,12 +66,10 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (
                 !$name ||
                 !$categoryId ||
-                $price === false ||
-                $price < 0 ||
                 $description === ""
             ) {
                 throw new RuntimeException(
-                    "Complete the product name, category, base price, and description.",
+                    "Complete the product name, category, and description.",
                 );
             }
             $typeValue = trim((string) ($_POST["product_type_id"] ?? ""));
@@ -151,7 +145,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $uploadedPaths = [];
             try {
                 $q = $pdo->prepare(
-                    "INSERT INTO products(product_category_id,product_type_id,product_name,slug,description,base_price,is_active) VALUES(?,?,?,?,?,?,1)",
+                    "INSERT INTO products(product_category_id,product_type_id,product_name,slug,description,is_active) VALUES(?,?,?,?,?,1)",
                 );
                 $q->execute([
                     $categoryId,
@@ -159,7 +153,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $name,
                     $slug,
                     $description,
-                    $price,
                 ]);
                 $newPid = (int) $pdo->lastInsertId();
                 $sku = clothing_sku(
@@ -191,12 +184,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         "RESTOCK",
                         "Initial variant stock",
                     );
-                    $basePriceQuery = $pdo->prepare(
-                        "SELECT base_price FROM products WHERE product_id=?",
-                    );
-                    $basePriceQuery->execute([$newPid]);
                     $expenseAmount = restock_expense_amount(
-                        (string) $basePriceQuery->fetchColumn(),
+                        number_format($variantPrice, 2, ".", ""),
                         $stock,
                     );
                     $expense = $pdo->prepare(
@@ -298,21 +287,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $_POST["product_type_id"] ?? null,
                 FILTER_VALIDATE_INT,
             );
-            $price = filter_var(
-                $_POST["base_price"] ?? null,
-                FILTER_VALIDATE_FLOAT,
-            );
             if (
                 !$pid ||
                 $name === "" ||
                 !$categoryId ||
                 $typeId === false ||
-                $typeId < 1 ||
-                $price === false ||
-                $price < 0
+                $typeId < 1
             ) {
                 throw new RuntimeException(
-                    "Enter a product name, category, type, and valid price.",
+                    "Enter a product name, category, and type.",
                 );
             }
             $slug =
@@ -337,7 +320,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $pdo->beginTransaction();
             try {
                 $q = $pdo->prepare(
-                    "UPDATE products SET product_category_id=?,product_type_id=?,product_name=?,slug=?,description=?,base_price=? WHERE product_id=?",
+                    "UPDATE products SET product_category_id=?,product_type_id=?,product_name=?,slug=?,description=? WHERE product_id=?",
                 );
                 $q->execute([
                     $categoryId,
@@ -345,7 +328,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $name,
                     $slug,
                     trim($_POST["description"] ?? ""),
-                    $price,
                     $pid,
                 ]);
                 $variants = $pdo->prepare(
@@ -463,7 +445,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $pdo->beginTransaction();
             try {
                 $variantQuery = $pdo->prepare(
-                    "SELECT v.stock_quantity,p.base_price,p.product_name
+                    "SELECT v.stock_quantity,v.price,p.product_name
                     FROM product_variants v
                     JOIN products p ON p.product_id=v.product_id
                     WHERE v.variant_id=? AND v.is_active=1 AND p.is_active=1
@@ -485,7 +467,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     );
                 }
                 $expenseAmount = restock_expense_amount(
-                    (string) $currentStock["base_price"],
+                    (string) $currentStock["price"],
                     $quantity,
                 );
                 $saveStock = $pdo->prepare(
@@ -586,7 +568,9 @@ $restockQuery->execute($restockArgs);
 $restockVariants = $restockQuery->fetchAll();
 $list = $pdo
     ->query(
-        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.product_type_id,p.base_price,pc.category_name,pt.type_name,
+        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.product_type_id,
+            (SELECT MIN(v2.price) FROM product_variants v2 WHERE v2.product_id=p.product_id AND v2.is_active=1) AS from_price,
+            pc.category_name,pt.type_name,
             (SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.product_id AND v.is_active=1) variants
         FROM products p
         JOIN product_categories pc ON pc.product_category_id=p.product_category_id
@@ -597,7 +581,7 @@ $list = $pdo
     ->fetchAll();
 $deleteList = $pdo
     ->query(
-        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,p.base_price,
+        "SELECT p.product_id,p.product_name,p.description,p.product_category_id,v.price AS variant_price,
             pc.category_name,pt.type_name,v.size_id,v.color_id,
             COALESCE(s.size_name,'One size') size_name,
             COALESCE(c.color_name,'Default') color_name
@@ -693,8 +677,6 @@ require __DIR__ . "/../includes/admin_header.php";
       ) ?></option>
       <?php endforeach; ?>
     </select>
-    <label for="new-product-price">Base price</label>
-    <input id="new-product-price" name="base_price" type="number" min="0" step=".01" required>
     <label for="new-product-description">Description</label>
     <textarea id="new-product-description" name="description" required></textarea>
     <h2>Initial size/color variant</h2>
@@ -716,7 +698,7 @@ require __DIR__ . "/../includes/admin_header.php";
       ) ?></option>
       <?php endforeach; ?>
     </select>
-    <label for="new-product-variant-price">Variant price</label>
+    <label for="new-product-variant-price">Price</label>
     <input id="new-product-variant-price" name="variant_price" type="number" min="0" step=".01" required>
     <label for="new-product-stock">Starting stock</label>
     <input id="new-product-stock" name="stock_quantity" type="number" min="0" step="1" required>
@@ -767,7 +749,7 @@ require __DIR__ . "/../includes/admin_header.php";
               $p["description"] ?? "",
               $p["category_name"],
               $p["type_name"],
-              $p["base_price"],
+              $p["from_price"] ?? "",
           ]),
       ) ?>">
         <td>
@@ -823,17 +805,7 @@ require __DIR__ . "/../includes/admin_header.php";
           </select>
         </td>
         <td>
-          <label class="sr-only" for="<?= e($editFormId) ?>-price">Base price</label>
-          <input
-            id="<?= e($editFormId) ?>-price"
-            form="<?= e($editFormId) ?>"
-            name="base_price"
-            type="number"
-            step="0.01"
-            min="0"
-            value="<?= e($p["base_price"]) ?>"
-            required
-          >
+          <?= $p["from_price"] !== null ? e(price_label((float) $p["from_price"], (float) $p["from_price"])) : "—" ?>
         </td>
         <td><?= (int) $p["variants"] ?></td>
         <td><button type="submit" form="<?= e($editFormId) ?>">Update</button></td>
@@ -917,7 +889,7 @@ require __DIR__ . "/../includes/admin_header.php";
                 $p["type_name"],
                 $p["size_name"],
                 $p["color_name"],
-                $p["base_price"],
+                $p["variant_price"] ?? "",
             ])) ?>"
             data-category="<?= (int) $p["product_category_id"] ?>"
             data-variant-options="<?= (int) ($p["size_id"] ?? 0) ?>:<?= (int) ($p["color_id"] ?? 0) ?>"
@@ -926,7 +898,7 @@ require __DIR__ . "/../includes/admin_header.php";
             <td><?= e($p["category_name"] . " / " . $p["type_name"]) ?></td>
             <td><?= e($p["size_name"]) ?></td>
             <td><?= e($p["color_name"]) ?></td>
-            <td>₱<?= number_format((float) $p["base_price"], 2) ?></td>
+            <td><?= $p["variant_price"] !== null ? "₱" . number_format((float) $p["variant_price"], 2) : "—" ?></td>
             <td>
               <form method="post" data-preserve-scroll onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
                 <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">

@@ -27,6 +27,8 @@ $v = $pdo->prepare(
 );
 $v->execute([$id]);
 $variants = $v->fetchAll();
+$prices = array_map(static fn($row) => (float) $row["price"], $variants);
+$priceText = $prices ? price_label(min($prices), max($prices)) : "Unavailable";
 $im = $pdo->prepare(
     'SELECT image_path,alt_text
     FROM product_images
@@ -198,10 +200,7 @@ require __DIR__ . "/includes/header.php";
                 ($p["type_name"] ? " / " . $p["type_name"] : ""),
         ) ?></div>
         <h1 class="page-title"><?= e($p["product_name"]) ?></h1>
-        <div class="price">₱<?= number_format(
-            (float) $p["base_price"],
-            2,
-        ) ?></div>
+        <div class="price"><?= e($priceText) ?></div>
         <p><?= nl2br(e($p["description"] ?? "")) ?></p>
         <?php if ($variants): ?>
             <?php

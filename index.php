@@ -6,7 +6,7 @@ $base = "
     SELECT
         p.product_id,
         p.product_name,
-        p.base_price,
+        mp.min_price, mp.max_price,
         c.product_category_id AS category_id,
         c.category_name,
         (
@@ -23,6 +23,12 @@ $base = "
         ) AS rating
     FROM products p
     JOIN product_categories c ON c.product_category_id = p.product_category_id
+    INNER JOIN (
+        SELECT product_id, MIN(price) AS min_price, MAX(price) AS max_price
+        FROM product_variants
+        WHERE is_active = 1
+        GROUP BY product_id
+    ) mp ON mp.product_id = p.product_id
     WHERE p.is_active = 1 AND c.is_active = 1
 ";
 
@@ -77,10 +83,10 @@ function product_card(array $p, bool $hidden = false): void
             <div class="card-info">
                 <div class="card-cat"><?= e($p["category_name"]) ?></div>
                 <h3><?= e($p["product_name"]) ?></h3>
-                <div class="price">₱<?= number_format(
-                    (float) $p["base_price"],
-                    2,
-                ) ?></div>
+                <div class="price"><?= e(price_label(
+                    (float) $p["min_price"],
+                    (float) $p["max_price"],
+                )) ?></div>
                 <?php if ($p["rating"]): ?>
                     <div class="stars" aria-label="Rated <?= (int) $p[
                         "rating"

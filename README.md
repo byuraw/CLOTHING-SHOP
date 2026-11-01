@@ -21,7 +21,9 @@ admin panel for products, orders, inventory, and reports.
    the captured store records, import `database/schema.sql` instead.
 3. For an existing installation that needs the legacy cleanup, run
    `database/upgrade_legacy_cleanup.sql` against that database before using
-   the updated application.
+   the updated application. For an existing installation, run
+   [database/drop_base&#95;price.sql](database/drop%5Fbase%5Fprice.sql) after
+   reading its STEP 1 comment.
 4. Install PHP dependencies from the project root:
 
    ```sh

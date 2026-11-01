@@ -241,3 +241,9 @@ function clothing_sku(
         $sizeId ?? 7,
     );
 }
+
+function price_label(float $min, float $max): string
+{
+    $text = "₱" . number_format($min, 2);
+    return $min < $max ? "From " . $text : $text;
+}

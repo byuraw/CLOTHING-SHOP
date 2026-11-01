@@ -69,11 +69,9 @@ CREATE TABLE products (
     product_name VARCHAR(180) NOT NULL,
     slug VARCHAR(200) NOT NULL UNIQUE,
     description TEXT NULL,
-    base_price DECIMAL(10, 2) NOT NULL,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    CONSTRAINT chk_products_price CHECK (base_price >= 0),
     FOREIGN KEY (product_category_id) REFERENCES product_categories (product_category_id),
     FOREIGN KEY (product_type_id) REFERENCES product_types (product_type_id),
     INDEX idx_products_active_category (is_active, product_category_id)
