@@ -165,7 +165,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $sku = clothing_sku(
                     $catalogInfo["category_name"],
                     $catalogInfo["type_name"],
-                    $newPid,
+                    $name,
                     $sizeId,
                     $colorId,
                 );
@@ -288,7 +288,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
             flash("Product deleted successfully and removed from the store.");
             redirect(
-                APP_BASE . "/admin/products.php#update-product-panel",
+                APP_BASE . "/admin/products.php#delete-product-panel",
             );
         } elseif ($action === "edit") {
             $pid = (int) ($_POST["product_id"] ?? 0);
@@ -348,6 +348,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $price,
                     $pid,
                 ]);
+                $variants = $pdo->prepare(
+                    "SELECT variant_id,size_id,color_id FROM product_variants WHERE product_id=? FOR UPDATE",
+                );
+                $variants->execute([$pid]);
+                $saveSku = $pdo->prepare(
+                    "UPDATE product_variants SET sku=? WHERE variant_id=?",
+                );
+                foreach ($variants->fetchAll() as $variant) {
+                    $sku = clothing_sku(
+                        $catalogInfo["category_name"],
+                        $catalogInfo["type_name"],
+                        $name,
+                        $variant["size_id"] === null
+                            ? null
+                            : (int) $variant["size_id"],
+                        $variant["color_id"] === null
+                            ? null
+                            : (int) $variant["color_id"],
+                    );
+                    $saveSku->execute([$sku, $variant["variant_id"]]);
+                }
                 $pdo->commit();
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {
@@ -369,7 +390,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
             $product = $pdo->prepare(
-                "SELECT pc.category_name,pt.type_name FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1",
+                "SELECT p.product_name,pc.category_name,pt.type_name FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1",
             );
             $product->execute([$pid]);
             $product = $product->fetch();
@@ -399,7 +420,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $sku = clothing_sku(
                 $product["category_name"],
                 $product["type_name"],
-                $pid,
+                $product["product_name"],
                 $sizeId,
                 $colorId,
             );
@@ -713,34 +734,6 @@ require __DIR__ . "/../includes/admin_header.php";
   data-product-panel
   hidden
 >
-<form class="form-card product-edit-form" method="post" id="product-edit-form">
-  <h2>Edit selected product</h2>
-  <p id="product-edit-prompt">Select a product from the table below to load its details.</p>
-  <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
-  <input type="hidden" name="action" value="edit">
-  <input type="hidden" name="product_id" id="edit-product-id" value="">
-  <label for="edit-product-name">Name</label>
-  <input id="edit-product-name" name="product_name" required disabled>
-  <label for="edit-product-description">Description</label>
-  <textarea id="edit-product-description" name="description" required disabled></textarea>
-  <label for="edit-product-category">Product category</label>
-  <select id="edit-product-category" name="product_category_id" required disabled>
-    <option value="">Choose a category</option>
-    <?php foreach ($cats as $category): ?>
-      <option value="<?= (int) $category["product_category_id"] ?>"><?= e($category["category_name"]) ?></option>
-    <?php endforeach; ?>
-  </select>
-  <label for="edit-product-type">Type</label>
-  <select id="edit-product-type" name="product_type_id" required disabled>
-    <option value="">Choose a type</option>
-    <?php foreach ($types as $type): ?>
-      <option value="<?= (int) $type["product_type_id"] ?>"><?= e($type["type_name"]) ?></option>
-    <?php endforeach; ?>
-  </select>
-  <label for="edit-product-price">Base price</label>
-  <input id="edit-product-price" name="base_price" type="number" step="0.01" min="0" required disabled>
-  <button type="submit" id="save-product-edit" disabled>Save changes</button>
-</form>
 <div class="update-product-toolbar">
   <div class="search">
     <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -754,18 +747,19 @@ require __DIR__ . "/../includes/admin_header.php";
   </div>
 </div>
 <div class="table-wrap">
-  <table>
+  <table class="product-edit-table">
     <thead>
       <tr>
         <th>Product</th>
         <th>Category / type</th>
         <th>Price</th>
         <th>Variants</th>
+        <th>Actions</th>
       </tr>
     </thead>
     <tbody>
       <?php foreach ($list as $p): ?>
-
+      <?php $editFormId = "edit-product-" . (int) $p["product_id"]; ?>
       <tr data-search="<?= e(
           implode(" ", [
               $p["product_id"],
@@ -775,27 +769,78 @@ require __DIR__ . "/../includes/admin_header.php";
               $p["type_name"],
               $p["base_price"],
           ]),
-      ) ?>"
-        data-product-id="<?= (int) $p["product_id"] ?>"
-        data-product-name="<?= e($p["product_name"]) ?>"
-        data-product-description="<?= e($p["description"] ?? "") ?>"
-        data-product-category="<?= (int) $p["product_category_id"] ?>"
-        data-product-type="<?= (int) $p["product_type_id"] ?>"
-        data-product-price="<?= e($p["base_price"]) ?>"
-        data-selectable-product
-        tabindex="0"
-        aria-label="<?= e("Select " . $p["product_name"] . " to edit") ?>"
-      >
+      ) ?>">
         <td>
-          <strong><?= e($p["product_name"]) ?></strong>
+          <form method="post" id="<?= e($editFormId) ?>">
+            <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="edit">
+            <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">
+          </form>
+          <label class="sr-only" for="<?= e($editFormId) ?>-name">Product name</label>
+          <input
+            id="<?= e($editFormId) ?>-name"
+            form="<?= e($editFormId) ?>"
+            name="product_name"
+            value="<?= e($p["product_name"]) ?>"
+            required
+          >
+          <label class="sr-only" for="<?= e($editFormId) ?>-description">Product description</label>
+          <textarea
+            id="<?= e($editFormId) ?>-description"
+            form="<?= e($editFormId) ?>"
+            name="description"
+            required
+          ><?= e($p["description"] ?? "") ?></textarea>
         </td>
-        <td><?= e($p["category_name"] . " / " . $p["type_name"]) ?></td>
-        <td>₱<?= number_format((float) $p["base_price"], 2) ?></td>
+        <td>
+          <label class="sr-only" for="<?= e($editFormId) ?>-category">Product category</label>
+          <select
+            id="<?= e($editFormId) ?>-category"
+            form="<?= e($editFormId) ?>"
+            name="product_category_id"
+            required
+          >
+            <?php foreach ($cats as $category): ?>
+              <option
+                value="<?= (int) $category["product_category_id"] ?>"
+                <?= (int) $p["product_category_id"] === (int) $category["product_category_id"] ? "selected" : "" ?>
+              ><?= e($category["category_name"]) ?></option>
+            <?php endforeach; ?>
+          </select>
+          <label class="sr-only" for="<?= e($editFormId) ?>-type">Product type</label>
+          <select
+            id="<?= e($editFormId) ?>-type"
+            form="<?= e($editFormId) ?>"
+            name="product_type_id"
+            required
+          >
+            <?php foreach ($types as $type): ?>
+              <option
+                value="<?= (int) $type["product_type_id"] ?>"
+                <?= (int) $p["product_type_id"] === (int) $type["product_type_id"] ? "selected" : "" ?>
+              ><?= e($type["type_name"]) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </td>
+        <td>
+          <label class="sr-only" for="<?= e($editFormId) ?>-price">Base price</label>
+          <input
+            id="<?= e($editFormId) ?>-price"
+            form="<?= e($editFormId) ?>"
+            name="base_price"
+            type="number"
+            step="0.01"
+            min="0"
+            value="<?= e($p["base_price"]) ?>"
+            required
+          >
+        </td>
         <td><?= (int) $p["variants"] ?></td>
+        <td><button type="submit" form="<?= e($editFormId) ?>">Update</button></td>
       </tr>
       <?php endforeach; ?>
       <?php if (!$list): ?>
-      <tr><td colspan="4" class="empty-note">No products yet. Create a product above to get started.</td></tr>
+      <tr><td colspan="5" class="empty-note">No products yet. Create a product above to get started.</td></tr>
       <?php endif; ?>
 
     </tbody>
@@ -883,7 +928,7 @@ require __DIR__ . "/../includes/admin_header.php";
             <td><?= e($p["color_name"]) ?></td>
             <td>₱<?= number_format((float) $p["base_price"], 2) ?></td>
             <td>
-              <form method="post" onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
+              <form method="post" data-preserve-scroll onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
                 <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">

@@ -203,28 +203,41 @@ function log_order_status(
 function clothing_sku(
     string $categoryName,
     string $typeName,
-    int $productId,
+    string $productName,
     ?int $sizeId,
     ?int $colorId,
 ): string {
-    $genderPrefix = match ($categoryName) {
-        "Men's Clothing" => "M",
-        "Women's Clothing" => "W",
+    $categoryPrefix = match ($categoryName) {
+        "Men's Clothing" => "MC",
+        "Women's Clothing" => "WC",
         default => "X",
     };
     $typePrefix = match ($typeName) {
-        "Top" => "T",
-        "Bottom" => "B",
-        "Headwear" => "H",
+        "Top" => "TP",
+        "Bottom" => "BTM",
+        "Headwear" => "HW",
         default => "X",
     };
+    if (
+        preg_match_all(
+            '/(?:^|\s)[^\p{L}\p{N}]*([\p{L}\p{N}])/u',
+            trim($productName),
+            $wordInitials,
+        ) === false ||
+        empty($wordInitials[1])
+    ) {
+        throw new RuntimeException(
+            "The product name must contain a letter or number to generate its SKU.",
+        );
+    }
+    $nameInitials = strtoupper(implode("", $wordInitials[1]));
 
     return sprintf(
-        "%s%s-%04d-%d-%d",
-        $genderPrefix,
+        "%s-%s-%s-%d-%d",
+        $categoryPrefix,
+        $nameInitials,
         $typePrefix,
-        $productId,
-        $sizeId ?? 7,
         $colorId ?? 0,
+        $sizeId ?? 7,
     );
 }
