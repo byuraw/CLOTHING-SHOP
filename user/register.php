@@ -9,7 +9,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $first = trim($_POST["first_name"] ?? "");
     $last = trim($_POST["last_name"] ?? "");
     $email = strtolower(trim($_POST["email"] ?? ""));
-    $password = $_POST["password"] ?? "";
+    $password = is_string($_POST["password"] ?? null)
+        ? $_POST["password"]
+        : "";
+    $confirmPassword = is_string($_POST["confirm_password"] ?? null)
+        ? $_POST["confirm_password"]
+        : "";
     $phone = trim($_POST["phone"] ?? "");
     if (
         $first === "" ||
@@ -19,6 +24,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     ) {
         $error =
             "Enter your name, a valid email, and a password of at least 8 characters.";
+    } elseif ($password !== $confirmPassword) {
+        $error = "Passwords do not match.";
     } else {
         try {
             $st = $pdo
@@ -73,7 +80,16 @@ require __DIR__ . "/../includes/header.php";
       $_POST["phone"] ?? "",
   ) ?>" /><label>Profile photo (optional)</label><input type="file" name="profile_photo" accept="image/jpeg,image/png,image/webp,image/gif" /><label
     >Password</label
-  ><input type="password" name="password" /><button>Create account</button>
+  ><input type="password" name="password" minlength="8" required /><label
+    for="confirm-password"
+    >Confirm password</label
+  ><input
+    type="password"
+    id="confirm-password"
+    name="confirm_password"
+    data-password-confirm
+    required
+  /><button>Create account</button>
   <p>Already registered? <a href="<?= APP_BASE ?>/user/login.php">Sign in</a></p>
 </form>
 <?php require __DIR__ . "/../includes/footer.php"; ?>

@@ -1,4 +1,19 @@
 (function () {
+    var confirmPassword = document.querySelector("[data-password-confirm]");
+    if (confirmPassword) {
+        var registrationForm = confirmPassword.form,
+            password = registrationForm.querySelector('[name="password"]');
+        function validatePasswordMatch() {
+            confirmPassword.setCustomValidity(
+                confirmPassword.value && confirmPassword.value !== password.value
+                    ? "Passwords do not match."
+                    : "",
+            );
+        }
+        password.addEventListener("input", validatePasswordMatch);
+        confirmPassword.addEventListener("input", validatePasswordMatch);
+    }
+
     // Search bar toggle
     var sBtn = document.querySelector("[data-search-toggle]"),
         sBar = document.getElementById("search-bar");
