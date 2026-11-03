@@ -2,6 +2,9 @@
 require_once __DIR__ . "/../includes/functions.php";
 require_admin();
 $error = "";
+$postString = static fn(string $key): string => is_string($_POST[$key] ?? null)
+    ? $_POST[$key]
+    : "";
 $restockFilterIds = [];
 foreach (
     [
@@ -22,8 +25,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     try {
         $action = $_POST["action"] ?? "";
         if ($action === "images") {
-            $pid = (int) ($_POST["product_id"] ?? 0);
-            if (!$pid) {
+            $pid = filter_var(
+                $_POST["product_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            if ($pid === false || $pid < 1) {
                 throw new RuntimeException("Select a product.");
             }
             $count = 0;
@@ -43,20 +49,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $q->execute([
                         $pid,
                         $path,
-                        trim($_POST["alt_text"] ?? ""),
+                        trim($postString("alt_text")),
                         $count++,
                     ]);
                 }
             }
-            flash(
-                $count
-                    ? "Product photos uploaded."
-                    : "Choose at least one photo.",
-            );
+            if ($count) {
+                flash("Product photos uploaded.");
+            } else {
+                flash("Choose at least one photo.", "error");
+            }
         } elseif ($action === "product") {
-            $name = trim($_POST["product_name"] ?? "");
-            $categoryId = (int) ($_POST["product_category_id"] ?? 0);
-            $description = trim($_POST["description"] ?? "");
+            $name = trim($postString("product_name"));
+            $categoryId = filter_var(
+                $_POST["product_category_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            $description = trim($postString("description"));
             $slug =
                 strtolower(
                     trim(preg_replace("/[^a-z0-9]+/i", "-", $name), "-"),
@@ -64,15 +73,17 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 "-" .
                 bin2hex(random_bytes(2));
             if (
-                !$name ||
-                !$categoryId ||
+                $name === "" ||
+                mb_strlen($name) > 180 ||
+                $categoryId === false ||
+                $categoryId < 1 ||
                 $description === ""
             ) {
                 throw new RuntimeException(
-                    "Complete the product name, category, and description.",
+                    "Enter a product name of at most 180 characters, choose a category, and enter a description.",
                 );
             }
-            $typeValue = trim((string) ($_POST["product_type_id"] ?? ""));
+            $typeValue = trim($postString("product_type_id"));
             $typeId =
                 $typeValue === ""
                     ? null
@@ -97,18 +108,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "Choose a valid product category and type.",
                 );
             }
-            $sizeId = filter_var(
-                $_POST["size_id"] ?? null,
-                FILTER_VALIDATE_INT,
-            );
-            $colorId = filter_var(
-                $_POST["color_id"] ?? null,
-                FILTER_VALIDATE_INT,
-            );
-            $variantPrice = filter_var(
-                $_POST["variant_price"] ?? null,
-                FILTER_VALIDATE_FLOAT,
-            );
+            $sizeId = filter_var($_POST["size_id"] ?? null, FILTER_VALIDATE_INT);
+            $colorId = filter_var($_POST["color_id"] ?? null, FILTER_VALIDATE_INT);
+            $priceInput = trim($postString("variant_price"));
+            $priceValid =
+                preg_match('/^\d+(?:\.\d{1,2})?$/D', $priceInput) === 1 &&
+                strlen(ltrim(explode(".", $priceInput, 2)[0], "0")) <= 8;
+            $variantPrice = $priceValid ? (float) $priceInput : false;
             $stock = filter_var(
                 $_POST["stock_quantity"] ?? null,
                 FILTER_VALIDATE_INT,
@@ -118,14 +124,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $sizeId < 1 ||
                 $colorId === false ||
                 $colorId < 1 ||
-                $variantPrice === false ||
-                $variantPrice < 0 ||
+                !$priceValid ||
                 $stock === false ||
-                $stock < 0
+                $stock < 0 ||
+                $stock > 4294967295
             ) {
                 throw new RuntimeException(
                     "Choose a size and color, then enter a valid variant price and starting stock.",
                 );
+            }
+            $optionCheck = $pdo->prepare(
+                "SELECT
+                    (SELECT COUNT(*) FROM sizes WHERE size_id=?) AS size_exists,
+                    (SELECT COUNT(*) FROM colors WHERE color_id=?) AS color_exists",
+            );
+            $optionCheck->execute([$sizeId, $colorId]);
+            $validOptions = $optionCheck->fetch();
+            if (!$validOptions["size_exists"] || !$validOptions["color_exists"]) {
+                throw new RuntimeException("Choose a valid size and color.");
             }
             $photos = $_FILES["photos"] ?? null;
             if (
@@ -171,7 +187,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $sizeId,
                     $colorId,
                     $sku,
-                    $variantPrice,
+                    number_format($variantPrice, 2, ".", ""),
                     $stock,
                 ]);
                 $variantId = (int) $pdo->lastInsertId();
@@ -281,21 +297,28 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
         } elseif ($action === "edit") {
             $pid = (int) ($_POST["product_id"] ?? 0);
-            $name = trim($_POST["product_name"] ?? "");
-            $categoryId = (int) ($_POST["product_category_id"] ?? 0);
+            $name = trim($postString("product_name"));
+            $categoryId = filter_var(
+                $_POST["product_category_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
             $typeId = filter_var(
                 $_POST["product_type_id"] ?? null,
                 FILTER_VALIDATE_INT,
             );
+            $description = trim($postString("description"));
             if (
                 !$pid ||
                 $name === "" ||
-                !$categoryId ||
+                mb_strlen($name) > 180 ||
+                $categoryId === false ||
+                $categoryId < 1 ||
                 $typeId === false ||
-                $typeId < 1
+                $typeId < 1 ||
+                $description === ""
             ) {
                 throw new RuntimeException(
-                    "Enter a product name, category, and type.",
+                    "Enter a product name of at most 180 characters, choose a valid category and type, and enter a description.",
                 );
             }
             $slug =
@@ -327,7 +350,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $typeId,
                     $name,
                     $slug,
-                    trim($_POST["description"] ?? ""),
+                    $description,
                     $pid,
                 ]);
                 $variants = $pdo->prepare(
@@ -363,12 +386,29 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 APP_BASE . "/admin/products.php#update-product-panel",
             );
         } elseif ($action === "variant") {
-            $pid = (int) ($_POST["product_id"] ?? 0);
-            $price = filter_var($_POST["price"] ?? null, FILTER_VALIDATE_FLOAT);
-            $stock = max(0, (int) ($_POST["stock_quantity"] ?? 0));
-            if (!$pid || $price === false || $price < 0) {
+            $pid = filter_var(
+                $_POST["product_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            $priceInput = trim($postString("price"));
+            $priceValid =
+                preg_match('/^\d+(?:\.\d{1,2})?$/D', $priceInput) === 1 &&
+                strlen(ltrim(explode(".", $priceInput, 2)[0], "0")) <= 8;
+            $price = $priceValid ? (float) $priceInput : false;
+            $stock = filter_var(
+                $_POST["stock_quantity"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            if (
+                $pid === false ||
+                $pid < 1 ||
+                !$priceValid ||
+                $stock === false ||
+                $stock < 0 ||
+                $stock > 4294967295
+            ) {
                 throw new RuntimeException(
-                    "Select a product and enter a valid price.",
+                    "Select a product and enter a valid price and starting stock.",
                 );
             }
             $product = $pdo->prepare(
@@ -379,8 +419,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if (!$product) {
                 throw new RuntimeException("Choose a valid product.");
             }
-            $sizeValue = trim((string) ($_POST["size_id"] ?? ""));
-            $colorValue = trim((string) ($_POST["color_id"] ?? ""));
+            $sizeValue = trim($postString("size_id"));
+            $colorValue = trim($postString("color_id"));
             $sizeId =
                 $sizeValue === ""
                     ? null
@@ -399,6 +439,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "Choose valid size and color options.",
                 );
             }
+            $optionCheck = $pdo->prepare(
+                "SELECT
+                    (SELECT COUNT(*) FROM sizes WHERE size_id=?) AS size_exists,
+                    (SELECT COUNT(*) FROM colors WHERE color_id=?) AS color_exists",
+            );
+            $optionCheck->execute([$sizeId, $colorId]);
+            $validOptions = $optionCheck->fetch();
+            if (
+                ($sizeId !== null && !$validOptions["size_exists"]) ||
+                ($colorId !== null && !$validOptions["color_exists"])
+            ) {
+                throw new RuntimeException(
+                    "Choose valid size and color options.",
+                );
+            }
             $sku = clothing_sku(
                 $product["category_name"],
                 $product["type_name"],
@@ -409,7 +464,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $q = $pdo->prepare(
                 "INSERT INTO product_variants(product_id,size_id,color_id,sku,price,stock_quantity,is_active) VALUES(?,?,?,?,?,?,1)",
             );
-            $q->execute([$pid, $sizeId, $colorId, $sku, $price, $stock]);
+            $q->execute([
+                $pid,
+                $sizeId,
+                $colorId,
+                $sku,
+                number_format($price, 2, ".", ""),
+                $stock,
+            ]);
             $variantId = (int) $pdo->lastInsertId();
             if ($stock > 0) {
                 log_inventory(
@@ -503,8 +565,121 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             redirect(
                 APP_BASE . "/admin/products.php#restock-product-panel",
             );
+        } elseif ($action === "delete_photo") {
+            $imageId = filter_var(
+                $_POST["image_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            if ($imageId === false || $imageId < 1) {
+                throw new RuntimeException("Choose a valid product photo.");
+            }
+            $imageQuery = $pdo->prepare(
+                "SELECT image_path FROM product_images WHERE image_id=?",
+            );
+            $imageQuery->execute([$imageId]);
+            $imagePath = $imageQuery->fetchColumn();
+            if ($imagePath === false) {
+                throw new RuntimeException("Choose a valid product photo.");
+            }
+            $photoDirectory = realpath(__DIR__ . "/../uploads/products");
+            $storedImagePath = str_replace("\\", "/", (string) $imagePath);
+            if (!str_starts_with($storedImagePath, "uploads/products/")) {
+                throw new RuntimeException(
+                    "The product photo path is outside its upload folder.",
+                );
+            }
+            $photoFile = $photoDirectory === false
+                ? false
+                : realpath(
+                    $photoDirectory .
+                        DIRECTORY_SEPARATOR .
+                        basename($storedImagePath),
+                );
+            if (
+                $photoDirectory === false ||
+                $photoFile === false ||
+                strncasecmp(
+                    $photoFile,
+                    rtrim($photoDirectory, DIRECTORY_SEPARATOR) .
+                        DIRECTORY_SEPARATOR,
+                    strlen(rtrim($photoDirectory, DIRECTORY_SEPARATOR) .
+                        DIRECTORY_SEPARATOR),
+                ) !== 0 ||
+                !is_file($photoFile)
+            ) {
+                throw new RuntimeException(
+                    "The product photo file is missing or outside its upload folder.",
+                );
+            }
+            if (!unlink($photoFile)) {
+                throw new RuntimeException("Could not delete the product photo file.");
+            }
+            $pdo->prepare(
+                "DELETE FROM product_images WHERE image_id=?",
+            )->execute([$imageId]);
+            flash("Product photo deleted.");
+        } elseif ($action === "main_photo") {
+            $imageId = filter_var(
+                $_POST["image_id"] ?? null,
+                FILTER_VALIDATE_INT,
+            );
+            if ($imageId === false || $imageId < 1) {
+                throw new RuntimeException("Choose a valid product photo.");
+            }
+            $imageQuery = $pdo->prepare(
+                "SELECT product_id FROM product_images WHERE image_id=?",
+            );
+            $imageQuery->execute([$imageId]);
+            $photoProductId = $imageQuery->fetchColumn();
+            if ($photoProductId === false) {
+                throw new RuntimeException("Choose a valid product photo.");
+            }
+            $imageIds = $pdo->prepare(
+                "SELECT image_id FROM product_images
+                WHERE product_id=?
+                ORDER BY sort_order,image_id",
+            );
+            $imageIds->execute([$photoProductId]);
+            $orderedImageIds = array_map(
+                "intval",
+                $imageIds->fetchAll(PDO::FETCH_COLUMN),
+            );
+            $pdo->beginTransaction();
+            try {
+                $saveOrder = $pdo->prepare(
+                    "UPDATE product_images SET sort_order=? WHERE image_id=? AND product_id=?",
+                );
+                $saveOrder->execute([0, $imageId, $photoProductId]);
+                $sortOrder = 1;
+                foreach ($orderedImageIds as $orderedImageId) {
+                    if ($orderedImageId !== (int) $imageId) {
+                        $saveOrder->execute([
+                            $sortOrder++,
+                            $orderedImageId,
+                            $photoProductId,
+                        ]);
+                    }
+                }
+                $pdo->commit();
+            } catch (Throwable $e) {
+                if ($pdo->inTransaction()) {
+                    $pdo->rollBack();
+                }
+                throw $e;
+            }
+            flash("Main product photo updated.");
         }
-        redirect(APP_BASE . "/admin/products.php");
+        redirect(
+            APP_BASE .
+                "/admin/products.php" .
+                (in_array(
+                    $action,
+                    ["images", "delete_photo", "main_photo"],
+                    true,
+                )
+                    ? "#update-product-panel"
+                    : ""),
+        );
     } catch (Throwable $e) {
         $error =
             $e instanceof RuntimeException
@@ -512,6 +687,14 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 : "Could not save. Check duplicate SKU and database setup.";
     }
 }
+$postedAction = is_string($_POST["action"] ?? null) ? $_POST["action"] : "";
+$postedProductId = filter_var(
+    $_POST["product_id"] ?? null,
+    FILTER_VALIDATE_INT,
+);
+$postedValue = static fn(string $key): string => is_scalar($_POST[$key] ?? null)
+    ? (string) $_POST[$key]
+    : "";
 $cats = $pdo
     ->query(
         "SELECT product_category_id,category_name FROM product_categories WHERE is_active=1 ORDER BY category_name",
@@ -579,6 +762,15 @@ $list = $pdo
         ORDER BY p.created_at DESC",
     )
     ->fetchAll();
+$productImageQuery = $pdo->query(
+    "SELECT image_id,product_id,image_path,alt_text,sort_order
+    FROM product_images
+    ORDER BY product_id,sort_order,image_id",
+);
+$productImages = [];
+foreach ($productImageQuery->fetchAll() as $productImage) {
+    $productImages[(int) $productImage["product_id"]][] = $productImage;
+}
 $deleteList = $pdo
     ->query(
         "SELECT p.product_id,p.product_name,p.description,p.product_category_id,v.price AS variant_price,
@@ -651,60 +843,92 @@ require __DIR__ . "/../includes/admin_header.php";
   aria-labelledby="add-product-tab"
   data-product-panel
 >
-  <form class="form-card product-create-form" method="post" enctype="multipart/form-data">
+  <form class="form-card product-create-form" method="post" enctype="multipart/form-data" novalidate>
     <h2>Add new product</h2>
     <input type="hidden" name="csrf" value="<?= e(
         csrf_token(),
     ) ?>" />
     <input type="hidden" name="action" value="product" />
     <label for="new-product-name">Name</label>
-    <input id="new-product-name" name="product_name" required>
+    <input id="new-product-name" name="product_name" value="<?= e($postedAction === "product" ? $postedValue("product_name") : "") ?>">
     <label for="new-product-category">Product category</label>
-    <select id="new-product-category" name="product_category_id" required>
+    <select id="new-product-category" name="product_category_id">
       <option value="">Choose a category</option>
       <?php foreach ($cats as $c): ?>
-      <option value="<?= (int) $c["product_category_id"] ?>"><?= e(
+      <option value="<?= (int) $c["product_category_id"] ?>" <?= $postedAction === "product" && $postedValue("product_category_id") === (string) $c["product_category_id"] ? "selected" : "" ?>><?= e(
           $c["category_name"],
       ) ?></option>
       <?php endforeach; ?>
     </select>
     <label for="new-product-type">Type</label>
-    <select id="new-product-type" name="product_type_id" required>
+    <select id="new-product-type" name="product_type_id">
       <option value="">Choose a type</option>
       <?php foreach ($types as $t): ?>
-      <option value="<?= (int) $t["product_type_id"] ?>"><?= e(
+      <option value="<?= (int) $t["product_type_id"] ?>" <?= $postedAction === "product" && $postedValue("product_type_id") === (string) $t["product_type_id"] ? "selected" : "" ?>><?= e(
           $t["type_name"],
       ) ?></option>
       <?php endforeach; ?>
     </select>
     <label for="new-product-description">Description</label>
-    <textarea id="new-product-description" name="description" required></textarea>
+    <textarea id="new-product-description" name="description"><?= e($postedAction === "product" ? $postedValue("description") : "") ?></textarea>
     <h2>Initial size/color variant</h2>
     <label for="new-product-size">Size</label>
-    <select id="new-product-size" name="size_id" required>
+    <select id="new-product-size" name="size_id">
       <option value="">Choose a size</option>
       <?php foreach ($sizes as $s): ?>
-      <option value="<?= (int) $s["size_id"] ?>"><?= e(
+      <option value="<?= (int) $s["size_id"] ?>" <?= $postedAction === "product" && $postedValue("size_id") === (string) $s["size_id"] ? "selected" : "" ?>><?= e(
           $s["size_name"],
       ) ?></option>
       <?php endforeach; ?>
     </select>
     <label for="new-product-color">Color</label>
-    <select id="new-product-color" name="color_id" required>
+    <select id="new-product-color" name="color_id">
       <option value="">Choose a color</option>
       <?php foreach ($colors as $c): ?>
-      <option value="<?= (int) $c["color_id"] ?>"><?= e(
+      <option value="<?= (int) $c["color_id"] ?>" <?= $postedAction === "product" && $postedValue("color_id") === (string) $c["color_id"] ? "selected" : "" ?>><?= e(
           $c["color_name"],
       ) ?></option>
       <?php endforeach; ?>
     </select>
     <label for="new-product-variant-price">Price</label>
-    <input id="new-product-variant-price" name="variant_price" type="number" min="0" step=".01" required>
+    <input id="new-product-variant-price" name="variant_price" type="text" value="<?= e($postedAction === "product" ? $postedValue("variant_price") : "") ?>">
     <label for="new-product-stock">Starting stock</label>
-    <input id="new-product-stock" name="stock_quantity" type="number" min="0" step="1" required>
+    <input id="new-product-stock" name="stock_quantity" type="text" value="<?= e($postedAction === "product" ? $postedValue("stock_quantity") : "") ?>">
     <label for="new-product-photos">Product photos</label>
-    <input id="new-product-photos" type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp,image/gif" required>
+    <input id="new-product-photos" type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp,image/gif">
     <button type="submit">Create product</button>
+  </form>
+
+  <form class="form-card" method="post" novalidate>
+    <h2>Add variant</h2>
+    <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+    <input type="hidden" name="action" value="variant">
+    <label for="variant-product">Product</label>
+    <select id="variant-product" name="product_id">
+      <option value="">Choose a product</option>
+      <?php foreach ($products as $product): ?>
+        <option value="<?= (int) $product["product_id"] ?>" <?= $postedAction === "variant" && $postedValue("product_id") === (string) $product["product_id"] ? "selected" : "" ?>><?= e($product["product_name"]) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <label for="variant-size">Size</label>
+    <select id="variant-size" name="size_id">
+      <option value="">One size</option>
+      <?php foreach ($sizes as $size): ?>
+        <option value="<?= (int) $size["size_id"] ?>" <?= $postedAction === "variant" && $postedValue("size_id") === (string) $size["size_id"] ? "selected" : "" ?>><?= e($size["size_name"]) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <label for="variant-color">Color</label>
+    <select id="variant-color" name="color_id">
+      <option value="">Default color</option>
+      <?php foreach ($colors as $color): ?>
+        <option value="<?= (int) $color["color_id"] ?>" <?= $postedAction === "variant" && $postedValue("color_id") === (string) $color["color_id"] ? "selected" : "" ?>><?= e($color["color_name"]) ?></option>
+      <?php endforeach; ?>
+    </select>
+    <label for="variant-price">Price</label>
+    <input id="variant-price" type="text" name="price" value="<?= e($postedAction === "variant" ? $postedValue("price") : "") ?>">
+    <label for="variant-stock">Starting stock</label>
+    <input id="variant-stock" type="text" name="stock_quantity" value="<?= e($postedAction === "variant" ? $postedValue("stock_quantity") : "") ?>">
+    <button type="submit">Add variant</button>
   </form>
 </section>
 
@@ -741,7 +965,11 @@ require __DIR__ . "/../includes/admin_header.php";
     </thead>
     <tbody>
       <?php foreach ($list as $p): ?>
-      <?php $editFormId = "edit-product-" . (int) $p["product_id"]; ?>
+      <?php
+      $editFormId = "edit-product-" . (int) $p["product_id"];
+      $restoreEdit = $postedAction === "edit" &&
+          $postedProductId === (int) $p["product_id"];
+      ?>
       <tr data-search="<?= e(
           implode(" ", [
               $p["product_id"],
@@ -753,7 +981,7 @@ require __DIR__ . "/../includes/admin_header.php";
           ]),
       ) ?>">
         <td>
-          <form method="post" id="<?= e($editFormId) ?>">
+          <form method="post" id="<?= e($editFormId) ?>" novalidate>
             <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">
@@ -763,16 +991,40 @@ require __DIR__ . "/../includes/admin_header.php";
             id="<?= e($editFormId) ?>-name"
             form="<?= e($editFormId) ?>"
             name="product_name"
-            value="<?= e($p["product_name"]) ?>"
-            required
+            value="<?= e($restoreEdit ? $postedValue("product_name") : $p["product_name"]) ?>"
           >
           <label class="sr-only" for="<?= e($editFormId) ?>-description">Product description</label>
           <textarea
             id="<?= e($editFormId) ?>-description"
             form="<?= e($editFormId) ?>"
             name="description"
-            required
-          ><?= e($p["description"] ?? "") ?></textarea>
+          ><?= e($restoreEdit ? $postedValue("description") : ($p["description"] ?? "")) ?></textarea>
+          <?php foreach ($productImages[(int) $p["product_id"]] ?? [] as $productImage): ?>
+            <div>
+              <img
+                src="<?= APP_BASE . "/" . e($productImage["image_path"]) ?>"
+                alt="<?= e($productImage["alt_text"] ?? $p["product_name"]) ?>"
+                width="80"
+              >
+              <?= (int) $productImage["sort_order"] === 0 ? "Main photo" : "" ?>
+              <form method="post" novalidate>
+                <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+                <input type="hidden" name="image_id" value="<?= (int) $productImage["image_id"] ?>">
+                <button type="submit" name="action" value="main_photo">Make main photo</button>
+                <button type="submit" name="action" value="delete_photo" class="danger">Delete photo</button>
+              </form>
+            </div>
+          <?php endforeach; ?>
+          <form class="row" method="post" enctype="multipart/form-data" novalidate>
+            <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
+            <input type="hidden" name="action" value="images">
+            <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">
+            <label class="sr-only" for="<?= e($editFormId) ?>-photos">Upload additional product photos</label>
+            <input id="<?= e($editFormId) ?>-photos" type="file" name="photos[]" multiple accept="image/jpeg,image/png,image/webp,image/gif">
+            <label class="sr-only" for="<?= e($editFormId) ?>-alt">Photo description</label>
+            <input id="<?= e($editFormId) ?>-alt" type="text" name="alt_text" placeholder="Photo description" value="<?= $postedAction === "images" && $postedProductId === (int) $p["product_id"] ? e($postedValue("alt_text")) : "" ?>">
+            <button type="submit">Upload photos</button>
+          </form>
         </td>
         <td>
           <label class="sr-only" for="<?= e($editFormId) ?>-category">Product category</label>
@@ -780,12 +1032,11 @@ require __DIR__ . "/../includes/admin_header.php";
             id="<?= e($editFormId) ?>-category"
             form="<?= e($editFormId) ?>"
             name="product_category_id"
-            required
           >
             <?php foreach ($cats as $category): ?>
               <option
                 value="<?= (int) $category["product_category_id"] ?>"
-                <?= (int) $p["product_category_id"] === (int) $category["product_category_id"] ? "selected" : "" ?>
+                <?= ($restoreEdit ? $postedValue("product_category_id") === (string) $category["product_category_id"] : (int) $p["product_category_id"] === (int) $category["product_category_id"]) ? "selected" : "" ?>
               ><?= e($category["category_name"]) ?></option>
             <?php endforeach; ?>
           </select>
@@ -794,12 +1045,11 @@ require __DIR__ . "/../includes/admin_header.php";
             id="<?= e($editFormId) ?>-type"
             form="<?= e($editFormId) ?>"
             name="product_type_id"
-            required
           >
             <?php foreach ($types as $type): ?>
               <option
                 value="<?= (int) $type["product_type_id"] ?>"
-                <?= (int) $p["product_type_id"] === (int) $type["product_type_id"] ? "selected" : "" ?>
+                <?= ($restoreEdit ? $postedValue("product_type_id") === (string) $type["product_type_id"] : (int) $p["product_type_id"] === (int) $type["product_type_id"]) ? "selected" : "" ?>
               ><?= e($type["type_name"]) ?></option>
             <?php endforeach; ?>
           </select>
@@ -900,7 +1150,7 @@ require __DIR__ . "/../includes/admin_header.php";
             <td><?= e($p["color_name"]) ?></td>
             <td><?= $p["variant_price"] !== null ? "₱" . number_format((float) $p["variant_price"], 2) : "—" ?></td>
             <td>
-              <form method="post" data-preserve-scroll onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
+              <form method="post" novalidate data-preserve-scroll onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
                 <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">
@@ -937,7 +1187,7 @@ require __DIR__ . "/../includes/admin_header.php";
       >
     </div>
   </div>
-  <form class="row" method="get" action="<?= e(APP_BASE . "/admin/products.php#restock-product-panel") ?>">
+  <form class="row" method="get" action="<?= e(APP_BASE . "/admin/products.php#restock-product-panel") ?>" novalidate>
     <label>Category<select name="product_category_id">
       <option value="">All categories</option>
       <?php foreach ($cats as $category): ?>
@@ -989,12 +1239,12 @@ require __DIR__ . "/../includes/admin_header.php";
             <td><?= e($variant["sku"]) ?></td>
             <td><?= (int) $variant["stock_quantity"] ?></td>
             <td>
-              <form class="row" method="post" action="<?= e(APP_BASE . "/admin/products.php#restock-product-panel") ?>">
+              <form class="row" method="post" action="<?= e(APP_BASE . "/admin/products.php#restock-product-panel") ?>" novalidate>
                 <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                 <input type="hidden" name="action" value="restock">
                 <input type="hidden" name="variant_id" value="<?= (int) $variant["variant_id"] ?>">
                 <label class="sr-only" for="restock-quantity-<?= (int) $variant["variant_id"] ?>">Quantity to add for <?= e($variant["product_name"]) ?></label>
-                <input id="restock-quantity-<?= (int) $variant["variant_id"] ?>" type="number" min="1" max="2147483647" name="quantity" placeholder="Qty" required>
+                <input id="restock-quantity-<?= (int) $variant["variant_id"] ?>" type="text" name="quantity" placeholder="Qty" value="<?= $postedAction === "restock" && $postedValue("variant_id") === (string) $variant["variant_id"] ? e($postedValue("quantity")) : "" ?>">
                 <button type="submit">Restock Product</button>
               </form>
             </td>

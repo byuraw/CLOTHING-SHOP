@@ -5,12 +5,14 @@ function send_order_status_email(PDO $pdo, int $orderId): void
     $cfg = require __DIR__ . "/../config/mail.php";
     if (
         $cfg["username"] === "" ||
+        $cfg["password"] === ""
+    ) {
+        throw new RuntimeException("Mailtrap credentials are missing.");
+    }
+    if (
         !is_file(__DIR__ . "/../vendor/autoload.php")
     ) {
-        error_log(
-            "Mailtrap not configured or Composer dependencies missing; order email skipped.",
-        );
-        return;
+        throw new RuntimeException("Composer dependencies are missing.");
     }
     require_once __DIR__ . "/../vendor/autoload.php";
     $q = $pdo->prepare(
@@ -19,10 +21,13 @@ function send_order_status_email(PDO $pdo, int $orderId): void
     $q->execute([$orderId]);
     $o = $q->fetch();
     if (!$o) {
-        return;
+        throw new RuntimeException("The order details could not be loaded.");
     }
     $it = $pdo->prepare(
-        "SELECT product_name_snapshot,quantity,unit_price,line_total FROM order_items WHERE order_id=?",
+        "SELECT product_name_snapshot,quantity,unit_price,line_total
+        FROM vw_order_transaction_details
+        WHERE order_id=?
+        ORDER BY order_item_id",
     );
     $it->execute([$orderId]);
     $items = $it->fetchAll();
@@ -83,7 +88,7 @@ function send_order_status_email(PDO $pdo, int $orderId): void
         "Order " . $o["order_number"] . " status: " . $o["status_name"];
     $mail->Body = $html;
     $mail->AltBody = strip_tags(
-        str_replace(["</td>", "</tr>", "<br>"], [" | ", '\n', '\n'], $html),
+        str_replace(["</td>", "</tr>", "<br>"], [" | ", "\n", "\n"], $html),
     );
     $mail->addStringAttachment(
         $pdf,

@@ -2,10 +2,36 @@
 
 declare(strict_types=1);
 if (session_status() !== PHP_SESSION_ACTIVE) {
+    $cookieParams = session_get_cookie_params();
+    $cookieParams["httponly"] = true;
+    $cookieParams["samesite"] = "Lax";
+    session_set_cookie_params($cookieParams);
+    ini_set("session.use_strict_mode", "1");
     session_start();
 }
 require_once __DIR__ . "/../config/database.php";
-define("APP_BASE", "/clothing-store-backup");
+$configuredBase = getenv("CLOTHING_APP_BASE");
+$projectRoot = realpath(__DIR__ . "/..");
+$documentRootValue = $_SERVER["DOCUMENT_ROOT"] ?? "";
+$documentRoot = $documentRootValue !== ""
+    ? realpath($documentRootValue)
+    : false;
+$computedBase = null;
+if ($configuredBase !== false && trim($configuredBase) !== "") {
+    $computedBase = trim($configuredBase);
+} elseif ($projectRoot !== false && $documentRoot !== false) {
+    $projectRoot = rtrim(str_replace("\\", "/", $projectRoot), "/");
+    $documentRoot = rtrim(str_replace("\\", "/", $documentRoot), "/");
+    if (strncasecmp($projectRoot, $documentRoot, strlen($documentRoot)) === 0) {
+        $relativeRoot = substr($projectRoot, strlen($documentRoot));
+        if ($relativeRoot === "" || str_starts_with($relativeRoot, "/")) {
+            $computedBase = $relativeRoot;
+        }
+    }
+}
+$computedBase = $computedBase ?? "/clothing-store-backup";
+$computedBase = "/" . trim(str_replace("\\", "/", $computedBase), "/");
+define("APP_BASE", $computedBase === "/" ? "" : $computedBase);
 function e(mixed $value): string
 {
     return htmlspecialchars((string) $value, ENT_QUOTES, "UTF-8");
@@ -55,10 +81,33 @@ function current_user(): ?array
 }
 function require_login(): void
 {
+    static $accountChecked = false;
     if (!current_user()) {
         flash("Please sign in to continue.", "error");
         redirect(APP_BASE . "/user/login.php");
     }
+    if ($accountChecked) {
+        return;
+    }
+    global $pdo;
+    $account = $pdo->prepare(
+        "SELECT s.status_name,u.role_name
+        FROM users u
+        JOIN account_statuses s ON s.status_id=u.status_id
+        WHERE u.user_id=?",
+    );
+    $account->execute([current_user()["id"]]);
+    $account = $account->fetch();
+    if (!$account || $account["status_name"] !== "Active") {
+        $_SESSION = [];
+        session_destroy();
+        session_id("");
+        session_start();
+        flash("Your account has been deactivated.", "error");
+        redirect(APP_BASE . "/user/login.php");
+    }
+    $_SESSION["user"]["role"] = $account["role_name"];
+    $accountChecked = true;
 }
 function require_admin(): void
 {
@@ -124,16 +173,14 @@ function upload_image(array $file, string $folder): ?string
 
 function moderate_review(string $text): string
 {
-    $words = ["nigga", "fuck", "shit", "bitch", "asshole", "bastard", "damn", "cunt", "bobo", "gago", "tangina","bading"];
-    foreach ($words as $word) {
-        $text =
-            preg_replace(
-                "/\b" . preg_quote($word, "/") . "\b/iu",
-                str_repeat("*", strlen($word)),
-                $text,
-            ) ?? $text;
-    }
-    return $text;
+    return preg_replace_callback(
+        '/\b(?:nigga|fuck(?:ing|ed|er|s)?|f\*ck|fuuck|shit(?:ty|s|ting)?|sh1t|bitch(?:es|y)?|assholes?|bastards?|damn(?:ed|ing|s)?|cunts?|bobos?|gagos?|tangina)\b/iu',
+        static fn(array $match): string => str_repeat(
+            "*",
+            mb_strlen($match[0]),
+        ),
+        $text,
+    ) ?? $text;
 }
 
 function log_inventory(
@@ -246,4 +293,8 @@ function price_label(float $min, float $max): string
 {
     $text = "₱" . number_format($min, 2);
     return $min < $max ? "From " . $text : $text;
+}
+
+if (current_user()) {
+    require_login();
 }

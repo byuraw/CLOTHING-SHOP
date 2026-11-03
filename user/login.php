@@ -10,10 +10,17 @@ if (current_user()) {
 $error = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     csrf_check();
-    $identifier = strtolower(trim($_POST["email"] ?? ""));
+    $identifier = strtolower(
+        trim(is_string($_POST["email"] ?? null) ? $_POST["email"] : ""),
+    );
+    $password = is_string($_POST["password"] ?? null)
+        ? $_POST["password"]
+        : "";
 
-    if ($identifier === "" || trim($_POST["password"] ?? "") === "") {
-        $error = "Enter your email address and password.";
+    if ($identifier === "" || !filter_var($identifier, FILTER_VALIDATE_EMAIL)) {
+        $error = "Enter a valid email address.";
+    } elseif ($password === "") {
+        $error = "Enter your password.";
     } else {
         $q = $pdo->prepare(
             'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,u.role_name,s.status_name
@@ -26,7 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         if (
             $u &&
             $u["status_name"] === "Active" &&
-            password_verify($_POST["password"] ?? "", $u["password_hash"])
+            password_verify($password, $u["password_hash"])
         ) {
             session_regenerate_id(true);
             $_SESSION["user"] = [
@@ -42,21 +49,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     : APP_BASE . "/index.php",
             );
         }
-        $error = "Email or password is incorrect, or the account is inactive.";
+        $error = "Email or password is incorrect";
     }
 }
 $pageTitle = "Sign in";
 require __DIR__ . "/../includes/header.php";
 ?>
 
-<form class="form-card" method="post">
+<form class="form-card" method="post" novalidate>
   <div class="eyebrow">Welcome back</div>
   <h1 class="page-title">Sign in</h1>
   <?php if ($error): ?>
   <div class="notice error"><?= e($error) ?></div>
   <?php endif; ?><input type="hidden" name="csrf" value="<?= e(
     csrf_token(),
-) ?>" /><label>Email address</label><input type="email" name="email" value="<?= e(
+) ?>" /><label>Email address</label><input type="text" name="email" value="<?= e(
     $_POST["email"] ?? "",
 ) ?>" /><label>Password</label
   ><input type="password" name="password" /><button>Sign in</button>

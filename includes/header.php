@@ -123,7 +123,7 @@ $isAdminPage =
                         <form
                             class="admin-search"
                             method="get"
-                            action="<?= APP_BASE ?>/admin/index.php"
+                            action="<?= APP_BASE ?>/admin/orders.php"
                         >
                             <svg viewBox="0 0 24 24" aria-hidden="true">
                                 <circle cx="11" cy="11" r="7"/>
@@ -133,7 +133,7 @@ $isAdminPage =
                                 type="search"
                                 name="q"
                                 value="<?= e($_GET["q"] ?? "") ?>"
-                                placeholder="Search orders by ID or customer…"
+                                placeholder="Search orders by number or customer…"
                                 aria-label="Search orders by number or customer"
                             >
                         </form>

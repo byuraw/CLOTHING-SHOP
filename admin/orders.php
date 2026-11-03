@@ -11,6 +11,9 @@ $fromDate = is_string($filterInput["from"] ?? null)
 $toDate = is_string($filterInput["to"] ?? null)
     ? trim($filterInput["to"])
     : "";
+$searchTerm = is_string($filterInput["q"] ?? null)
+    ? trim($filterInput["q"])
+    : "";
 $isValidDate = static function (string $value): bool {
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/D', $value)) {
         return false;
@@ -35,6 +38,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     csrf_check();
     $id = (int) ($_POST["order_id"] ?? 0);
     $new = (int) ($_POST["status_id"] ?? 0);
+    $statusChanged = false;
     $pdo->beginTransaction();
     try {
         $s = $pdo->prepare(
@@ -94,6 +98,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $pdo->prepare(
                 "UPDATE orders SET order_status_id=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?",
             )->execute([$new, $id]);
+            $statusChanged = true;
             log_order_status(
                 $pdo,
                 $id,
@@ -103,14 +108,30 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             );
         }
         $pdo->commit();
-        try {
-            send_order_status_email($pdo, $id);
-        } catch (Throwable $mailError) {
-            error_log("Order status email failed: " . $mailError->getMessage());
+        if ($statusChanged) {
+            try {
+                send_order_status_email($pdo, $id);
+                flash("Order status updated.");
+            } catch (Throwable $mailError) {
+                error_log(
+                    "Order status email failed: " . $mailError->getMessage(),
+                );
+                $mailReason = trim(
+                    preg_replace('/\s+/', " ", $mailError->getMessage()) ??
+                        "Unknown mail error.",
+                );
+                flash(
+                    "Status updated, but the email could not be sent: " .
+                        substr($mailReason, 0, 200),
+                    "error",
+                );
+            }
         }
-        flash("Order status updated.");
+        if (!$statusChanged) {
+            flash("Order status updated.");
+        }
         $filters = array_filter(
-            ["from" => $fromDate, "to" => $toDate],
+            ["from" => $fromDate, "to" => $toDate, "q" => $searchTerm],
             static fn($value) => $value !== "",
         );
         redirect(
@@ -146,6 +167,12 @@ if ($invalidDateFilter) {
         $orderConditions[] = "o.placed_at<DATE_ADD(?, INTERVAL 1 DAY)";
         $orderParams[] = $toDate;
     }
+    if ($searchTerm !== "") {
+        $orderConditions[] =
+            "(o.order_number LIKE ? OR CONCAT(u.first_name,' ',u.last_name) LIKE ?)";
+        $orderParams[] = "%" . $searchTerm . "%";
+        $orderParams[] = "%" . $searchTerm . "%";
+    }
 }
 $ordersQuery = $pdo->prepare(
     "SELECT o.order_id,o.order_number,o.total_amount,
@@ -173,6 +200,9 @@ require __DIR__ . "/../includes/admin_header.php";
 <?php endif; ?>
 
 <form class="row orders-date-filter" method="get">
+  <label for="orders-search">Order or customer
+    <input id="orders-search" type="text" name="q" value="<?= e($searchTerm) ?>">
+  </label>
   <label for="orders-date-from">From
     <input id="orders-date-from" type="date" name="from" value="<?= e($fromDate) ?>">
   </label>
@@ -228,6 +258,7 @@ require __DIR__ . "/../includes/admin_header.php";
 ] ?>" />
             <input type="hidden" name="from" value="<?= e($fromDate) ?>">
             <input type="hidden" name="to" value="<?= e($toDate) ?>">
+            <input type="hidden" name="q" value="<?= e($searchTerm) ?>">
             <select name="status_id">
               <?php foreach ($statuses as $st): ?>
 

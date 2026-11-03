@@ -23,11 +23,12 @@ if (!$o) {
 }
 
 $i = $pdo->prepare(
-    'SELECT product_name_snapshot,sku_snapshot,size_snapshot,color_snapshot,unit_price,quantity,line_total
-    FROM order_items
-    WHERE order_id=?',
+    'SELECT product_name_snapshot,size_snapshot,color_snapshot,unit_price,quantity,line_total
+    FROM vw_order_transaction_details
+    WHERE order_id=? AND user_id=?
+    ORDER BY order_item_id',
 );
-$i->execute([$id]);
+$i->execute([$id, current_user()["id"]]);
 $items = $i->fetchAll();
 $pageTitle = "Order details";
 require __DIR__ . "/includes/header.php";

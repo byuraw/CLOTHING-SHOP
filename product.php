@@ -39,18 +39,26 @@ $im->execute([$id]);
 $images = $im->fetchAll();
 $image = $images[0] ?? null;
 $reviewError = "";
+$reviewPost = $_SERVER["REQUEST_METHOD"] === "POST" &&
+    ($_POST["action"] ?? "") === "review";
 
-if (
-    $_SERVER["REQUEST_METHOD"] === "POST" &&
-    ($_POST["action"] ?? "") === "review"
-) {
+if ($reviewPost) {
     csrf_check();
     require_login();
     $rating = (int) ($_POST["rating"] ?? 0);
-    $review = moderate_review(trim($_POST["review_text"] ?? ""));
+    $originalReview = trim(
+        is_string($_POST["review_text"] ?? null)
+            ? $_POST["review_text"]
+            : "",
+    );
+    $review = moderate_review($originalReview);
 
-    if ($rating < 1 || $rating > 5 || $review === "") {
+    if ($originalReview === "") {
         $reviewError = "Choose a rating and write a review.";
+    } elseif (mb_strlen($originalReview) > 1000) {
+        $reviewError = "Reviews must be 1000 characters or fewer.";
+    } elseif ($rating < 1 || $rating > 5) {
+        $reviewError = "Choose a rating between 1 and 5.";
     } else {
         $can = $pdo->prepare(
             "SELECT oi.order_item_id
@@ -62,6 +70,7 @@ if (
                     SELECT variant_id FROM product_variants WHERE product_id=?
                 )
                 AND os.status_name IN ('Processing','Packed','Shipped','Delivered','Completed')
+            ORDER BY o.placed_at DESC,oi.order_item_id DESC
             LIMIT 1",
         );
         $can->execute([current_user()["id"], $id]);
@@ -70,29 +79,56 @@ if (
         if (!$orderItem) {
             $reviewError = "You can review this product after purchasing it.";
         } else {
-            $save = $pdo->prepare(
-                'INSERT INTO product_reviews(product_id,user_id,order_item_id,rating,review_text)
-                VALUES(?,?,?,?,?)
-                ON DUPLICATE KEY UPDATE
-                    rating=VALUES(rating),
-                    review_text=VALUES(review_text),
-                    updated_at=CURRENT_TIMESTAMP',
+            $existingReviewQuery = $pdo->prepare(
+                "SELECT review_id FROM product_reviews WHERE user_id=? AND product_id=?",
             );
-            $save->execute([
-                $id,
-                current_user()["id"],
-                $orderItem,
-                $rating,
-                $review,
-            ]);
+            $existingReviewQuery->execute([current_user()["id"], $id]);
+            $existingReviewId = $existingReviewQuery->fetchColumn();
+            if ($existingReviewId !== false) {
+                $save = $pdo->prepare(
+                    "UPDATE product_reviews
+                    SET rating=?,review_text=?,updated_at=CURRENT_TIMESTAMP
+                    WHERE review_id=?",
+                );
+                $save->execute([$rating, $review, $existingReviewId]);
+            } else {
+                $save = $pdo->prepare(
+                    "INSERT INTO product_reviews(product_id,user_id,order_item_id,rating,review_text)
+                    VALUES(?,?,?,?,?)",
+                );
+                $save->execute([
+                    $id,
+                    current_user()["id"],
+                    $orderItem,
+                    $rating,
+                    $review,
+                ]);
+            }
             flash("Review saved.");
             redirect(APP_BASE . "/product.php?id=" . $id . "#reviews");
         }
     }
 }
 
+$savedReview = null;
+if (current_user()) {
+    $savedReviewQuery = $pdo->prepare(
+        "SELECT rating,review_text FROM product_reviews WHERE product_id=? AND user_id=?",
+    );
+    $savedReviewQuery->execute([$id, current_user()["id"]]);
+    $savedReview = $savedReviewQuery->fetch() ?: null;
+}
+$formRating = $reviewPost
+    ? (int) ($_POST["rating"] ?? 0)
+    : (int) ($savedReview["rating"] ?? 5);
+$formReviewText = $reviewPost
+    ? (is_string($_POST["review_text"] ?? null)
+        ? trim($_POST["review_text"])
+        : "")
+    : ($savedReview["review_text"] ?? "");
+
 $reviews = $pdo->prepare(
-    'SELECT pr.rating,pr.review_text,pr.created_at,u.first_name,u.last_name
+    'SELECT pr.rating,pr.review_text,pr.created_at,pr.updated_at,u.first_name,u.last_name
     FROM product_reviews pr
     JOIN users u ON u.user_id=pr.user_id
     WHERE pr.product_id=?
@@ -308,7 +344,7 @@ require __DIR__ . "/includes/header.php";
                 <?= str_repeat("★", (int) $r["rating"]) ?>
             </span>
             <p><?= nl2br(e($r["review_text"])) ?></p>
-            <small><?= e($r["created_at"]) ?></small>
+            <small><?= e($r["created_at"]) ?><?= $r["updated_at"] > $r["created_at"] ? " (edited)" : "" ?></small>
         </article>
     <?php endforeach; ?>
 
@@ -318,14 +354,14 @@ require __DIR__ . "/includes/header.php";
             <input type="hidden" name="action" value="review" />
             <label>Rating (1-5)</label>
             <select name="rating">
-                <option value="5">5 - Excellent</option>
-                <option value="4">4 - Good</option>
-                <option value="3">3 - Average</option>
-                <option value="2">2 - Poor</option>
-                <option value="1">1 - Bad</option>
+                <option value="5" <?= $formRating === 5 ? "selected" : "" ?>>5 - Excellent</option>
+                <option value="4" <?= $formRating === 4 ? "selected" : "" ?>>4 - Good</option>
+                <option value="3" <?= $formRating === 3 ? "selected" : "" ?>>3 - Average</option>
+                <option value="2" <?= $formRating === 2 ? "selected" : "" ?>>2 - Poor</option>
+                <option value="1" <?= $formRating === 1 ? "selected" : "" ?>>1 - Bad</option>
             </select>
             <label>Your review</label>
-            <textarea name="review_text"></textarea>
+            <textarea name="review_text"><?= e($formReviewText) ?></textarea>
             <button>Submit / update review</button>
         </form>
     <?php else: ?>

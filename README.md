@@ -23,7 +23,9 @@ admin panel for products, orders, inventory, and reports.
    `database/upgrade_legacy_cleanup.sql` against that database before using
    the updated application. For an existing installation, run
    [database/drop_base&#95;price.sql](database/drop%5Fbase%5Fprice.sql) after
-   reading its STEP 1 comment.
+   reading its STEP 1 comment. Also run
+   `database/migration_qa_fixes.sql` to add the order details view and review
+   uniqueness for this release.
 4. Install PHP dependencies from the project root:
 
    ```sh
@@ -48,8 +50,31 @@ admin panel for products, orders, inventory, and reports.
    Replace the Mailtrap credentials with values from your Mailtrap sandbox.
    The database defaults are suitable for a standard local XAMPP installation;
    set the variables explicitly in production.
-6. Open the project through the local web server. Configure the application's
-   base URL if the project is not hosted at the expected local path.
+6. Open the project through the local web server. The application computes its
+   base path from the document root; set `CLOTHING_APP_BASE` only to override it.
+
+## Mailtrap setup for XAMPP
+
+Install the mail and PDF dependencies from the project root:
+
+```bat
+composer install
+```
+
+Set these variables for the Apache process (for example, in the Windows
+environment or Apache configuration), then restart Apache:
+
+```text
+MAILTRAP_HOST=sandbox.smtp.mailtrap.io
+MAILTRAP_PORT=2525
+MAILTRAP_USERNAME=your-mailtrap-username
+MAILTRAP_PASSWORD=your-mailtrap-password
+MAIL_FROM_EMAIL=store@example.test
+MAIL_FROM_NAME=Wearwell Clothing
+```
+
+Use the credentials from your Mailtrap sandbox; do not put real credentials in
+the project files.
 
 To refresh the snapshot from the current local XAMPP database, run this from the
 project root after making database changes:
