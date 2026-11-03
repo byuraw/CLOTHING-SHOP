@@ -13,12 +13,11 @@ admin panel for products, orders, inventory, and reports.
 ## Setup
 
 1. Place the project in your web server's document root.
-2. To restore the existing store data on a new device, import
-   `database/clothing_store_backup.sql` using phpMyAdmin or the MySQL client.
-   The snapshot creates and selects the `clothing_store_fixed` database and
-   includes its tables and records. Importing it replaces tables with the same
-   names, so back up an existing database first. For a clean database without
-   the captured store records, import `database/schema.sql` instead.
+2. To restore the store on a new device, import
+   `database/clothing_store_complete.sql` using phpMyAdmin or the MySQL client.
+   It creates the `clothing_store_fixed` database, tables, view, triggers, and
+   data. Importing it replaces tables with the same names, so back up an
+   existing database first. `database/schema.sql` is for an empty database.
 3. For an existing installation that needs the legacy cleanup, run
    `database/upgrade_legacy_cleanup.sql` against that database before using
    the updated application. For an existing installation, run
