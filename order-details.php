@@ -89,5 +89,10 @@ require __DIR__ . "/includes/header.php";
 <p>
     <b>Total: ₱<?= number_format((float) $o["total_amount"], 2) ?></b>
 </p>
+<p>
+    <a class="button secondary" href="<?= e(
+        APP_BASE . "/receipt.php?id=" . (int) $o["order_id"],
+    ) ?>">Download receipt (PDF)</a>
+</p>
 
 <?php require __DIR__ . "/includes/footer.php"; ?>

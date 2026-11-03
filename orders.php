@@ -49,6 +49,12 @@ require __DIR__ . "/includes/header.php";
                             ] ?>">
                                 Details
                             </a>
+                            &middot;
+                            <a href="<?= APP_BASE ?>/receipt.php?id=<?= (int) $o[
+                                "order_id"
+                            ] ?>">
+                                Receipt
+                            </a>
                         </td>
                     </tr>
                 <?php endforeach; ?>

@@ -1,5 +1,10 @@
 <?php
 
+$localConfig = __DIR__ . "/mail.local.php";
+if (is_file($localConfig)) {
+    return require $localConfig;
+}
+
 return [
     "host" => getenv("MAILTRAP_HOST") ?: "sandbox.smtp.mailtrap.io",
     "port" => (int) (getenv("MAILTRAP_PORT") ?: 2525),

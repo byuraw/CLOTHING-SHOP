@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . "/includes/functions.php";
+require_once __DIR__ . "/includes/order_email.php";
 require_login();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
@@ -151,7 +152,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $del->execute([$uid]);
         $pdo->commit();
 
-        flash("Order placed successfully.");
+        try {
+            send_order_confirmation_email($pdo, $orderId);
+            flash("Order placed successfully.");
+        } catch (Throwable $emailError) {
+            error_log(
+                "Order confirmation email failed: " .
+                    $emailError->getMessage(),
+            );
+            flash(
+                "Order placed, but the confirmation email could not be sent.",
+                "error",
+            );
+        }
         redirect(APP_BASE . "/order-details.php?id=" . $orderId);
     } catch (Throwable $e) {
         if ($pdo->inTransaction()) {

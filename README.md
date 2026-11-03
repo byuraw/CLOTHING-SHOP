@@ -55,14 +55,17 @@ admin panel for products, orders, inventory, and reports.
 
 ## Mailtrap setup for XAMPP
 
-Install the mail and PDF dependencies from the project root:
+From the project root, install the mail and PDF dependencies:
 
 ```bat
 composer install
 ```
 
-Set these variables for the Apache process (for example, in the Windows
-environment or Apache configuration), then restart Apache:
+For local XAMPP testing, copy the Mailtrap credentials into
+`config/mail.local.php`. This local file overrides the environment-variable
+configuration in `config/mail.php` and is ignored by Git. Keep real credentials
+out of tracked files. If `mail.local.php` is not present, configure these
+environment variables for Apache and restart it:
 
 ```text
 MAILTRAP_HOST=sandbox.smtp.mailtrap.io
@@ -73,8 +76,8 @@ MAIL_FROM_EMAIL=store@example.test
 MAIL_FROM_NAME=Wearwell Clothing
 ```
 
-Use the credentials from your Mailtrap sandbox; do not put real credentials in
-the project files.
+Open `http://localhost/<project-folder>/test_mail.php` to send a plain test
+message and view SMTP debug output. Delete `test_mail.php` after testing.
 
 To refresh the snapshot from the current local XAMPP database, run this from the
 project root after making database changes:
