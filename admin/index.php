@@ -26,8 +26,9 @@ $customers = (int) $pdo
 $firstMonth = new DateTimeImmutable("first day of this month");
 $from = $firstMonth->modify("-6 months")->format("Y-m-01");
 $salesQuery = $pdo->prepare(
-    "SELECT s.sale_date AS placed_at,s.total_amount
+    "SELECT s.sale_date AS placed_at,o.subtotal AS total_amount
     FROM sales s
+    JOIN orders o ON o.order_id=s.order_id
     WHERE s.sale_date>=?",
 );
 $salesQuery->execute([$from . " 00:00:00"]);
@@ -80,7 +81,7 @@ $lowStock = $pdo
     ->fetchAll();
 $recentOrders = $pdo
     ->query(
-        'SELECT o.order_number,o.total_amount,os.status_name,u.first_name,u.last_name
+        'SELECT o.order_number,o.subtotal AS total_amount,os.status_name,u.first_name,u.last_name
         FROM orders o
         JOIN order_statuses os ON os.order_status_id=o.order_status_id
         JOIN users u ON u.user_id=o.user_id

@@ -10,8 +10,9 @@ if (!in_array($transactionType, ["all", "single", "multi"], true)) {
 }
 $args = [$from, $to];
 $q = $pdo->prepare(
-    "SELECT COUNT(*) orders_count,COALESCE(SUM(s.total_amount),0) sales
+    "SELECT COUNT(*) orders_count,COALESCE(SUM(o.subtotal),0) sales
     FROM sales s
+    JOIN orders o ON o.order_id=s.order_id
     WHERE s.sale_date >= ?
       AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)",
 );
@@ -26,7 +27,7 @@ $transactionQuery = $pdo->prepare(
         CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
         COALESCE(items.item_count, 0) AS item_count,
         COALESCE(items.total_quantity, 0) AS total_quantity,
-        s.total_amount,
+        o.subtotal AS total_amount,
         (
             SELECT p.amount
             FROM payments p

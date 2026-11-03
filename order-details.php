@@ -87,7 +87,7 @@ require __DIR__ . "/includes/header.php";
     </table>
 </div>
 <p>
-    <b>Total: ₱<?= number_format((float) $o["total_amount"], 2) ?></b>
+    <b>Total: ₱<?= number_format((float) $o["subtotal"], 2) ?></b>
 </p>
 <p>
     <a class="button secondary" href="<?= e(

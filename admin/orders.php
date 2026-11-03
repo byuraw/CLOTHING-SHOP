@@ -175,7 +175,7 @@ if ($invalidDateFilter) {
     }
 }
 $ordersQuery = $pdo->prepare(
-    "SELECT o.order_id,o.order_number,o.total_amount,
+    "SELECT o.order_id,o.order_number,o.subtotal AS total_amount,
         (SELECT p.amount FROM payments p WHERE p.order_id=o.order_id ORDER BY p.created_at DESC,p.payment_id DESC LIMIT 1) AS payment_amount,
         o.placed_at,os.status_name,u.first_name,u.last_name
     FROM orders o

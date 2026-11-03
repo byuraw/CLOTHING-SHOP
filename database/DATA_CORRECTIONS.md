@@ -1,7 +1,6 @@
 # Data corrections
 
-The complete import was built from `clothing_store_backup.sql`. The following
-source rows needed value corrections:
+The complete import includes the following corrected source rows:
 
 | Table | Row IDs | Change | Reason |
 |---|---|---|---|

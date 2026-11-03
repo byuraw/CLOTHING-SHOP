@@ -82,12 +82,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 "SELECT order_status_id FROM order_statuses WHERE status_name='Pending'",
             )
             ->fetchColumn();
-        $shipping = 0.0;
         $number =
             "ORD-" . date("Ymd") . "-" . strtoupper(bin2hex(random_bytes(3)));
         $o = $pdo->prepare(
-            'INSERT INTO orders(user_id,address_id,order_status_id,order_number,subtotal,shipping_fee,total_amount,customer_note)
-            VALUES(?,?,?,?,?,?,?,?)',
+            'INSERT INTO orders(user_id,address_id,order_status_id,order_number,subtotal,total_amount,customer_note)
+            VALUES(?,?,?,?,?,?,?)',
         );
         $o->execute([
             $uid,
@@ -95,8 +94,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $status,
             $number,
             $subtotal,
-            $shipping,
-            $subtotal + $shipping,
+            $subtotal,
             trim($_POST["customer_note"] ?? "") ?: null,
         ]);
         $orderId = (int) $pdo->lastInsertId();

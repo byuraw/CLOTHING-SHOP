@@ -310,7 +310,6 @@ SELECT
     oi.quantity,
     oi.line_total,
     o.subtotal,
-    o.shipping_fee,
     o.total_amount
 FROM orders o
 JOIN users u ON u.user_id=o.user_id
@@ -1698,3 +1697,19 @@ GROUP BY sku
 HAVING COUNT(*) > 1;
 
 SELECT COUNT(*) AS order_transaction_view_rows FROM vw_order_transaction_details;
+
+-- Remove shipping fees from stored order totals and drop the obsolete column.
+UPDATE orders
+SET total_amount = subtotal
+WHERE total_amount <> subtotal;
+
+UPDATE sales s
+JOIN orders o ON o.order_id = s.order_id
+SET s.total_amount = o.total_amount
+WHERE s.total_amount <> o.total_amount;
+
+ALTER TABLE orders
+    DROP CONSTRAINT `CONSTRAINT_1`,
+    DROP COLUMN shipping_fee,
+    ADD CONSTRAINT chk_orders_nonnegative_amounts
+        CHECK (subtotal >= 0 AND total_amount >= 0);
