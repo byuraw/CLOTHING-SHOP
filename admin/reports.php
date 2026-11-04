@@ -95,6 +95,7 @@ require __DIR__ . "/../includes/admin_header.php";
 ) ?>" /></label>
   <button>Apply</button>
 </form>
+
 <div class="grid">
   <div class="stat">Orders<strong><?= (int) $summary[
       "orders_count"
@@ -112,6 +113,7 @@ require __DIR__ . "/../includes/admin_header.php";
       2,
   ) ?></strong><small class="muted">Estimate; excludes product cost and other overhead.</small></div>
 </div>
+
 <h2>Transactions</h2>
 
 <form class="transaction-filter" method="get">

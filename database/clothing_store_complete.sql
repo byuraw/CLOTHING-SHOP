@@ -1,8 +1,8 @@
 /*
   Wearwell Clothing Store complete database import
   Date: 2026-11-03
-  Import with phpMyAdmin or the MySQL client. This file recreates all tables
-  in clothing_store_fixed and loads the corrected backup data. Back up first.
+  Import with phpMyAdmin or the MySQL client. This file creates missing tables
+  in clothing_store_fixed and reloads the corrected backup data. Back up first.
 */
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS=0;
@@ -12,15 +12,14 @@ USE clothing_store_fixed;
 DROP VIEW IF EXISTS `vw_order_transaction_details`;
 DROP TRIGGER IF EXISTS `trg_orders_insert_completed_sale`;
 DROP TRIGGER IF EXISTS `trg_orders_completed_to_sale`;
-DROP TABLE IF EXISTS `product_reviews`, `cart_items`, `expenses`, `inventory_transactions`, `order_status_history`, `sales`, `payments`, `order_items`, `orders`, `product_variants`, `product_images`, `addresses`, `products`, `users`, `order_statuses`, `colors`, `sizes`, `product_types`, `product_categories`, `account_statuses`;
-CREATE TABLE `account_statuses` (
+CREATE TABLE IF NOT EXISTS `account_statuses` (
   `status_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
   `status_name` varchar(30) NOT NULL,
   PRIMARY KEY (`status_id`),
   UNIQUE KEY `status_name` (`status_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `product_categories` (
+CREATE TABLE IF NOT EXISTS `product_categories` (
   `product_category_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `category_name` varchar(100) NOT NULL,
   `description` text DEFAULT NULL,
@@ -29,35 +28,35 @@ CREATE TABLE `product_categories` (
   UNIQUE KEY `category_name` (`category_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `product_types` (
+CREATE TABLE IF NOT EXISTS `product_types` (
   `product_type_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `type_name` varchar(100) NOT NULL,
   PRIMARY KEY (`product_type_id`),
   UNIQUE KEY `type_name` (`type_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `sizes` (
+CREATE TABLE IF NOT EXISTS `sizes` (
   `size_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `size_name` varchar(30) NOT NULL,
   PRIMARY KEY (`size_id`),
   UNIQUE KEY `size_name` (`size_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `colors` (
+CREATE TABLE IF NOT EXISTS `colors` (
   `color_id` smallint(5) unsigned NOT NULL AUTO_INCREMENT,
   `color_name` varchar(50) NOT NULL,
   PRIMARY KEY (`color_id`),
   UNIQUE KEY `color_name` (`color_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `order_statuses` (
+CREATE TABLE IF NOT EXISTS `order_statuses` (
   `order_status_id` tinyint(3) unsigned NOT NULL AUTO_INCREMENT,
   `status_name` varchar(30) NOT NULL,
   PRIMARY KEY (`order_status_id`),
   UNIQUE KEY `status_name` (`status_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `users` (
+CREATE TABLE IF NOT EXISTS `users` (
   `user_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `role_name` enum('Customer','Admin') NOT NULL DEFAULT 'Customer',
   `status_id` tinyint(3) unsigned NOT NULL,
@@ -68,14 +67,13 @@ CREATE TABLE `users` (
   `phone` varchar(30) DEFAULT NULL,
   `profile_photo` varchar(255) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`user_id`),
   UNIQUE KEY `email` (`email`),
   KEY `fk_users_status` (`status_id`),
   CONSTRAINT `fk_users_status` FOREIGN KEY (`status_id`) REFERENCES `account_statuses` (`status_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `addresses` (
+CREATE TABLE IF NOT EXISTS `addresses` (
   `address_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint(20) unsigned NOT NULL,
   `recipient_name` varchar(160) NOT NULL,
@@ -85,13 +83,12 @@ CREATE TABLE `addresses` (
   `province` varchar(100) NOT NULL,
   `postal_code` varchar(20) NOT NULL,
   `is_default` tinyint(1) NOT NULL DEFAULT 0,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`address_id`),
   KEY `idx_addresses_user_default` (`user_id`,`is_default`),
   CONSTRAINT `addresses_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `products` (
+CREATE TABLE IF NOT EXISTS `products` (
   `product_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `product_category_id` int(10) unsigned NOT NULL,
   `product_type_id` int(10) unsigned NOT NULL,
@@ -100,7 +97,6 @@ CREATE TABLE `products` (
   `description` text DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT 1,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`product_id`),
   UNIQUE KEY `slug` (`slug`),
   KEY `product_category_id` (`product_category_id`),
@@ -110,7 +106,7 @@ CREATE TABLE `products` (
   CONSTRAINT `products_ibfk_2` FOREIGN KEY (`product_type_id`) REFERENCES `product_types` (`product_type_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `product_images` (
+CREATE TABLE IF NOT EXISTS `product_images` (
   `image_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint(20) unsigned NOT NULL,
   `image_path` varchar(255) NOT NULL,
@@ -121,7 +117,7 @@ CREATE TABLE `product_images` (
   CONSTRAINT `product_images_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`product_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `product_variants` (
+CREATE TABLE IF NOT EXISTS `product_variants` (
   `variant_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint(20) unsigned NOT NULL,
   `size_id` smallint(5) unsigned DEFAULT NULL,
@@ -142,14 +138,13 @@ CREATE TABLE `product_variants` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`price` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `orders` (
+CREATE TABLE IF NOT EXISTS `orders` (
   `order_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint(20) unsigned NOT NULL,
   `address_id` bigint(20) unsigned DEFAULT NULL,
   `order_status_id` tinyint(3) unsigned NOT NULL,
   `order_number` varchar(40) NOT NULL,
   `subtotal` decimal(10,2) NOT NULL,
-  `shipping_fee` decimal(10,2) NOT NULL DEFAULT 0.00,
   `total_amount` decimal(10,2) NOT NULL,
   `customer_note` varchar(500) DEFAULT NULL,
   `placed_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -162,10 +157,10 @@ CREATE TABLE `orders` (
   CONSTRAINT `orders_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `orders_ibfk_2` FOREIGN KEY (`address_id`) REFERENCES `addresses` (`address_id`) ON DELETE SET NULL,
   CONSTRAINT `orders_ibfk_3` FOREIGN KEY (`order_status_id`) REFERENCES `order_statuses` (`order_status_id`),
-  CONSTRAINT `CONSTRAINT_1` CHECK (`subtotal` >= 0 and `shipping_fee` >= 0 and `total_amount` >= 0)
+  CONSTRAINT `chk_orders_amounts` CHECK (`subtotal` >= 0 AND `total_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `order_items` (
+CREATE TABLE IF NOT EXISTS `order_items` (
   `order_item_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `order_id` bigint(20) unsigned NOT NULL,
   `variant_id` bigint(20) unsigned DEFAULT NULL,
@@ -184,7 +179,7 @@ CREATE TABLE `order_items` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`unit_price` >= 0 and `quantity` > 0 and `line_total` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `payments` (
+CREATE TABLE IF NOT EXISTS `payments` (
   `payment_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `order_id` bigint(20) unsigned NOT NULL,
   `amount` decimal(10,2) NOT NULL,
@@ -196,7 +191,7 @@ CREATE TABLE `payments` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `sales` (
+CREATE TABLE IF NOT EXISTS `sales` (
   `sale_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `order_id` bigint(20) unsigned NOT NULL,
   `transaction_reference` varchar(80) NOT NULL,
@@ -211,7 +206,7 @@ CREATE TABLE `sales` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`total_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `order_status_history` (
+CREATE TABLE IF NOT EXISTS `order_status_history` (
   `history_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `order_id` bigint(20) unsigned NOT NULL,
   `order_status_id` tinyint(3) unsigned NOT NULL,
@@ -227,7 +222,7 @@ CREATE TABLE `order_status_history` (
   CONSTRAINT `order_status_history_ibfk_3` FOREIGN KEY (`changed_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `inventory_transactions` (
+CREATE TABLE IF NOT EXISTS `inventory_transactions` (
   `inventory_transaction_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `variant_id` bigint(20) unsigned NOT NULL,
   `changed_by` bigint(20) unsigned DEFAULT NULL,
@@ -242,14 +237,13 @@ CREATE TABLE `inventory_transactions` (
   CONSTRAINT `inventory_transactions_ibfk_2` FOREIGN KEY (`changed_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `expenses` (
+CREATE TABLE IF NOT EXISTS `expenses` (
   `expense_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `recorded_by` bigint(20) unsigned DEFAULT NULL,
   `expense_name` varchar(180) NOT NULL,
   `amount` decimal(10,2) NOT NULL,
   `expense_date` date NOT NULL,
   `notes` varchar(500) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`expense_id`),
   KEY `recorded_by` (`recorded_by`),
   KEY `idx_expenses_date` (`expense_date`),
@@ -257,13 +251,12 @@ CREATE TABLE `expenses` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `cart_items` (
+CREATE TABLE IF NOT EXISTS `cart_items` (
   `cart_item_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `user_id` bigint(20) unsigned NOT NULL,
   `variant_id` bigint(20) unsigned NOT NULL,
   `quantity` int(10) unsigned NOT NULL,
   `added_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`cart_item_id`),
   UNIQUE KEY `uq_cart_user_variant` (`user_id`,`variant_id`),
   KEY `variant_id` (`variant_id`),
@@ -272,7 +265,7 @@ CREATE TABLE `cart_items` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`quantity` > 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE `product_reviews` (
+CREATE TABLE IF NOT EXISTS `product_reviews` (
   `review_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `product_id` bigint(20) unsigned NOT NULL,
   `user_id` bigint(20) unsigned NOT NULL,
@@ -291,6 +284,49 @@ CREATE TABLE `product_reviews` (
   CONSTRAINT `product_reviews_ibfk_3` FOREIGN KEY (`order_item_id`) REFERENCES `order_items` (`order_item_id`) ON DELETE CASCADE,
   CONSTRAINT `CONSTRAINT_1` CHECK (`rating` between 1 and 5)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Reload the seed data without dropping any table objects.
+DELETE FROM `product_reviews`;
+DELETE FROM `cart_items`;
+DELETE FROM `expenses`;
+DELETE FROM `inventory_transactions`;
+DELETE FROM `order_status_history`;
+DELETE FROM `sales`;
+DELETE FROM `payments`;
+DELETE FROM `order_items`;
+DELETE FROM `orders`;
+DELETE FROM `product_variants`;
+DELETE FROM `product_images`;
+DELETE FROM `addresses`;
+DELETE FROM `products`;
+DELETE FROM `users`;
+DELETE FROM `order_statuses`;
+DELETE FROM `colors`;
+DELETE FROM `sizes`;
+DELETE FROM `product_types`;
+DELETE FROM `product_categories`;
+DELETE FROM `account_statuses`;
+
+ALTER TABLE `account_statuses` AUTO_INCREMENT=1;
+ALTER TABLE `product_categories` AUTO_INCREMENT=1;
+ALTER TABLE `product_types` AUTO_INCREMENT=1;
+ALTER TABLE `sizes` AUTO_INCREMENT=1;
+ALTER TABLE `colors` AUTO_INCREMENT=1;
+ALTER TABLE `order_statuses` AUTO_INCREMENT=1;
+ALTER TABLE `users` AUTO_INCREMENT=1;
+ALTER TABLE `addresses` AUTO_INCREMENT=1;
+ALTER TABLE `products` AUTO_INCREMENT=1;
+ALTER TABLE `product_images` AUTO_INCREMENT=1;
+ALTER TABLE `product_variants` AUTO_INCREMENT=1;
+ALTER TABLE `orders` AUTO_INCREMENT=1;
+ALTER TABLE `order_items` AUTO_INCREMENT=1;
+ALTER TABLE `payments` AUTO_INCREMENT=1;
+ALTER TABLE `sales` AUTO_INCREMENT=1;
+ALTER TABLE `order_status_history` AUTO_INCREMENT=1;
+ALTER TABLE `inventory_transactions` AUTO_INCREMENT=1;
+ALTER TABLE `expenses` AUTO_INCREMENT=1;
+ALTER TABLE `cart_items` AUTO_INCREMENT=1;
+ALTER TABLE `product_reviews` AUTO_INCREMENT=1;
 
 -- Order transaction details view.
 CREATE OR REPLACE VIEW vw_order_transaction_details AS
@@ -347,84 +383,84 @@ INSERT INTO `order_statuses` (`order_status_id`, `status_name`) VALUES (3,'Packe
 INSERT INTO `order_statuses` (`order_status_id`, `status_name`) VALUES (1,'Pending');
 INSERT INTO `order_statuses` (`order_status_id`, `status_name`) VALUES (2,'Processing');
 INSERT INTO `order_statuses` (`order_status_id`, `status_name`) VALUES (4,'Shipped');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (1,'Admin',1,'Admin','Account','admin@example.com','$2y$10$.swgQnJFoU16vz1MuG5R5uAFsDRhHdNiqSsm9JfgbZza8ZCOUklhm',NULL,NULL,'2026-10-27 18:15:18','2026-10-27 18:15:18');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (9,'Customer',1,'Alex','Reyes','alex.reyes.demo@example.com','$2y$10$XY5cUT6S9Nd0P10faJdnHOkACaEAzprREJJjzKFltcvG49GiHXGYa','09171230001',NULL,'2026-10-27 18:55:57','2026-10-29 02:33:20');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (10,'Customer',1,'Mika','Santos','mika.santos.demo@example.com','$2y$10$eAhg.pU2veSDcP7yoBnOquBA0prbsHwxfnwO9DXEwZ4ZjNy7TtJwu','09171230002',NULL,'2026-10-27 18:55:57','2026-10-29 02:33:26');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (11,'Customer',1,'Jordan','Cruz','jordan.cruz.demo@example.com','$2y$10$4LNIX7FhIr8JIcINdfyjpOm/SeF4Dz0dLsjmKFNZ/3IePjgB9c52y','09171230003',NULL,'2026-10-27 18:55:57','2026-10-29 02:33:31');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (12,'Customer',1,'Sam','Garcia','sam.garcia.demo@example.com','$2y$10$k29QK0O4k/xnTtMNEBY5SODcLPvxoVVnJDISSMEsIhYLCMO8xdBsW','09171230004',NULL,'2026-10-27 18:55:57','2026-10-29 02:24:33');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (13,'Customer',1,'Taylor','Dela Cruz','taylor.delacruz.demo@example.com','$2y$10$CU3q5QUAOC3KOJ6stvISNeZabTKUBg9t4nplkIRBrmCs9wTm3Zx3y','09171230005',NULL,'2026-10-27 18:55:57','2026-10-29 02:33:38');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (14,'Customer',1,'Casey','Mendoza','casey.mendoza.demo@example.com','$2y$10$HKTdfdRzAYv0m5O66PqtS.pTz5piVIVWIfnIKjTOEUBvvgPacAZC2','09171230006',NULL,'2026-10-27 18:55:57','2026-10-29 03:09:26');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (16,'Customer',1,'Justine','Sabalza','justinesabalza0101@gmail.com','$2y$12$itKxwua2/ffxihYlg7zWh.JVdvzxm7UjfKuckurCskjJCddCLNpqe','09090909090',NULL,'2026-10-27 19:01:57','2026-10-27 19:01:57');
-INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`, `updated_at`) VALUES (17,'Customer',1,'John','Taneo','johntaneo@gmail.com','$2y$10$zJFyGBQHpnfIXtNJImctmuknqK8h5cVqQowx6TBTZJ8eVXaCWbW4i',NULL,'uploads/profiles/1eccd0004d15ee294ec0abdf6203956a.jpg','2026-10-29 03:17:43','2026-10-29 03:22:36');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (8,9,'Alex Reyes','09171230001','Blk 12 Lot 4, Sampaguita St.','Taguig City','Metro Manila','1630',1,'2026-10-27 18:55:57');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (9,10,'Mika Santos','09171230002','Unit 3B, 28 Rizal Ave.','Makati City','Metro Manila','1210',1,'2026-10-27 18:55:57');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (10,11,'Jordan Cruz','09171230003','15 Narra Street','Pasig City','Metro Manila','1600',1,'2026-10-27 18:55:57');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (11,12,'Sam Garcia','09171230004','22 Mabini Road','Mandaluyong City','Metro Manila','1550',1,'2026-10-27 18:55:57');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (12,13,'Taylor Dela Cruz','09171230005','Unit 5, 8 Bonifacio St.','Taguig City','Metro Manila','1634',1,'2026-10-27 18:55:57');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (13,14,'Casey Mendoza','09171230006','9 Acacia Lane','Quezon City','Metro Manila','1104',1,'2026-10-27 18:55:57');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (20,16,'Justine Sabalza','09090909090','Blk 7 SDH','Taguig City','NCR','1632',0,'2026-10-28 07:29:51');
-INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`, `created_at`) VALUES (21,17,'John Taneo','09121480385','Road 1 #66','Taguig City','NCR','1632',0,'2026-10-29 03:19:41');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (1,1,1,'Basic T-Shirt','basic-t-shirt','Everyday cotton T-shirt with a comfortable regular fit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (2,1,1,'Polo Shirt','polo-shirt','Classic polo shirt for casual and smart-casual outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (3,1,1,'Button-Down Shirt','button-down-shirt','Versatile button-down shirt suitable for work or weekends.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (4,1,1,'Hoodie','hoodie','Soft casual hoodie for cool days and relaxed outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (5,1,1,'Sweatshirt','sweatshirt','Comfortable crewneck sweatshirt with a clean silhouette.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (7,1,1,'Henley Shirt','henley-shirt','Casual Henley shirt with a buttoned neckline.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (8,1,1,'Flannel Shirt','flannel-shirt','Soft checked flannel shirt for layering.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (9,1,1,'Long-Sleeve Shirt','long-sleeve-shirt','Long-sleeve basic designed for versatile everyday styling.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (10,1,1,'Knit Sweater','knit-sweater','Textured knit sweater for a comfortable layered look.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (11,1,2,'Slim-Fit Jeans','slim-fit-jeans-4cd593','Slim-fit denim jeans with a modern everyday cut.',1,'2026-10-27 18:20:01','2026-10-29 02:24:09');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (12,1,2,'Straight-Leg Jeans','straight-leg-jeans','Classic straight-leg denim jeans.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (13,1,2,'Cargo Pants','cargo-pants','Utility-inspired cargo pants with practical pockets.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (14,1,2,'Chino Pants','chino-pants','Smart-casual chino pants for work and weekends.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (15,1,2,'Jogger Pants','jogger-pants','Relaxed jogger pants with an easy tapered fit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (16,1,2,'Denim Shorts','denim-shorts','Casual denim shorts for warm-weather outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (17,1,2,'Bermuda Shorts','bermuda-shorts','Versatile knee-length Bermuda shorts.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (18,1,2,'Dress Pants','dress-pants','Tailored-look dress pants for formal occasions.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (19,1,2,'Sweatpants','sweatpants','Soft sweatpants for lounging and casual wear.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (20,1,2,'Linen Trousers','linen-trousers','Breathable linen-blend trousers for warm weather.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (21,1,3,'Baseball Cap','baseball-cap','Adjustable baseball cap with a curved brim.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (22,1,3,'Bucket Hat','bucket-hat','Casual bucket hat for everyday styling.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (23,1,3,'Beanie','beanie','Soft knit beanie for a simple layered look.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (24,1,3,'Fedora Hat','fedora-hat','Classic fedora-inspired hat for a statement outfit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (25,1,3,'Flat Cap','flat-cap','Traditional flat cap with a clean profile.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (26,1,3,'Snapback Cap','snapback-cap','Structured snapback cap with an adjustable closure.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (27,1,3,'Trucker Hat','trucker-hat','Casual trucker cap with a breathable back panel.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (28,1,3,'Beret','beret','Minimal beret for a distinctive casual look.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (29,1,3,'Panama Hat','panama-hat','Lightweight summer hat with a classic brim.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (30,1,3,'Fisherman Beanie','fisherman-beanie','Short cuffed knit beanie with a fisherman style.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (31,2,1,'Basic T-Shirt','w-basic-t-shirt','Everyday basic T-shirt with an easy, versatile fit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (32,2,1,'Crop Top','crop-top','Casual crop top for everyday outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (33,2,1,'Blouse','blouse','Versatile blouse suitable for casual or dressy styling.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (34,2,1,'Camisole','camisole','Lightweight camisole for layering or warm days.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (35,2,1,'Tank Top','w-tank-top','Simple sleeveless tank top for everyday wear.',0,'2026-10-27 18:20:01','2026-11-01 15:56:25');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (36,2,1,'Off-Shoulder Top','off-shoulder-top','Off-shoulder top for a relaxed, dressy look.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (37,2,1,'Halter Top','halter-top','Halter-neck top with a clean, modern style.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (38,2,1,'Bodysuit','bodysuit','Streamlined bodysuit designed for easy outfit pairing.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (39,2,1,'Cardigan','cardigan','Soft cardigan for comfortable layering.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (40,2,1,'Knit Sweater','w-knit-sweater','Knit sweater with a versatile everyday silhouette.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (41,2,2,'Skinny Jeans','skinny-jeans','Skinny-fit denim jeans with a classic finish.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (42,2,2,'Wide-Leg Jeans','wide-leg-jeans','Wide-leg jeans with a relaxed contemporary fit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (43,2,2,'Cargo Pants','w-cargo-pants','Utility-inspired cargo pants with functional pockets.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (44,2,2,'High-Waisted Trousers','high-waisted-trousers','High-waisted trousers for a polished everyday outfit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (45,2,2,'Denim Shorts','w-denim-shorts','Casual denim shorts for warm-weather styling.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (46,2,2,'Mini Skirt','mini-skirt','Versatile mini skirt for casual outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (47,2,2,'Midi Skirt','midi-skirt','Midi skirt designed for easy day-to-day styling.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (48,2,2,'Maxi Skirt','maxi-skirt','Flowing maxi skirt for relaxed, dressy outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (49,2,2,'Leggings','leggings','Stretch leggings for comfortable everyday wear.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (50,2,2,'Palazzo Pants','palazzo-pants','Flowy palazzo pants with a relaxed wide-leg fit.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (51,2,3,'Baseball Cap','w-baseball-cap','Adjustable baseball cap for casual everyday outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (52,2,3,'Bucket Hat','w-bucket-hat','Casual bucket hat with an easy, relaxed shape.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (53,2,3,'Beanie','w-beanie','Soft knit beanie for a simple layered look.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (54,2,3,'Beret','w-beret','Classic beret to complement casual or smart outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (55,2,3,'Wide-Brim Sun Hat','wide-brim-sun-hat','Wide-brim hat for sunny-day outfits.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (56,2,3,'Fedora Hat','w-fedora-hat','Fedora-inspired hat with a versatile silhouette.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (57,2,3,'Straw Hat','straw-hat','Lightweight straw-style hat for warm-weather wear.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (58,2,3,'Visor Cap','visor-cap','Lightweight visor cap for outdoor activities.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (59,2,3,'Cloche Hat','cloche-hat','Cloche-inspired hat with a timeless rounded shape.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (60,2,3,'Newsboy Cap','newsboy-cap','Newsboy cap with a classic casual profile.',1,'2026-10-27 18:20:01','2026-10-27 18:20:01');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (61,1,1,'Tank Top','tank-top-dbf378','tank top',0,'2026-10-29 03:25:59','2026-11-01 15:44:20');
-INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`, `updated_at`) VALUES (62,1,1,'Tank Top','tank-top-27d2','tank top na malupet',0,'2026-11-01 16:01:19','2026-11-01 16:41:34');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (1,'Admin',1,'Admin','Account','admin@example.com','$2y$10$.swgQnJFoU16vz1MuG5R5uAFsDRhHdNiqSsm9JfgbZza8ZCOUklhm',NULL,NULL,'2026-10-27 18:15:18');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (9,'Customer',1,'Alex','Reyes','alex.reyes.demo@example.com','$2y$10$XY5cUT6S9Nd0P10faJdnHOkACaEAzprREJJjzKFltcvG49GiHXGYa','09171230001',NULL,'2026-10-27 18:55:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (10,'Customer',1,'Mika','Santos','mika.santos.demo@example.com','$2y$10$eAhg.pU2veSDcP7yoBnOquBA0prbsHwxfnwO9DXEwZ4ZjNy7TtJwu','09171230002',NULL,'2026-10-27 18:55:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (11,'Customer',1,'Jordan','Cruz','jordan.cruz.demo@example.com','$2y$10$4LNIX7FhIr8JIcINdfyjpOm/SeF4Dz0dLsjmKFNZ/3IePjgB9c52y','09171230003',NULL,'2026-10-27 18:55:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (12,'Customer',1,'Sam','Garcia','sam.garcia.demo@example.com','$2y$10$k29QK0O4k/xnTtMNEBY5SODcLPvxoVVnJDISSMEsIhYLCMO8xdBsW','09171230004',NULL,'2026-10-27 18:55:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (13,'Customer',1,'Taylor','Dela Cruz','taylor.delacruz.demo@example.com','$2y$10$CU3q5QUAOC3KOJ6stvISNeZabTKUBg9t4nplkIRBrmCs9wTm3Zx3y','09171230005',NULL,'2026-10-27 18:55:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (14,'Customer',1,'Casey','Mendoza','casey.mendoza.demo@example.com','$2y$10$HKTdfdRzAYv0m5O66PqtS.pTz5piVIVWIfnIKjTOEUBvvgPacAZC2','09171230006',NULL,'2026-10-27 18:55:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (16,'Customer',1,'Justine','Sabalza','justinesabalza0101@gmail.com','$2y$12$itKxwua2/ffxihYlg7zWh.JVdvzxm7UjfKuckurCskjJCddCLNpqe','09090909090',NULL,'2026-10-27 19:01:57');
+INSERT INTO `users` (`user_id`, `role_name`, `status_id`, `first_name`, `last_name`, `email`, `password_hash`, `phone`, `profile_photo`, `created_at`) VALUES (17,'Customer',1,'John','Taneo','johntaneo@gmail.com','$2y$10$zJFyGBQHpnfIXtNJImctmuknqK8h5cVqQowx6TBTZJ8eVXaCWbW4i',NULL,'uploads/profiles/1eccd0004d15ee294ec0abdf6203956a.jpg','2026-10-29 03:17:43');
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (8,9,'Alex Reyes','09171230001','Blk 12 Lot 4, Sampaguita St.','Taguig City','Metro Manila','1630',1);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (9,10,'Mika Santos','09171230002','Unit 3B, 28 Rizal Ave.','Makati City','Metro Manila','1210',1);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (10,11,'Jordan Cruz','09171230003','15 Narra Street','Pasig City','Metro Manila','1600',1);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (11,12,'Sam Garcia','09171230004','22 Mabini Road','Mandaluyong City','Metro Manila','1550',1);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (12,13,'Taylor Dela Cruz','09171230005','Unit 5, 8 Bonifacio St.','Taguig City','Metro Manila','1634',1);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (13,14,'Casey Mendoza','09171230006','9 Acacia Lane','Quezon City','Metro Manila','1104',1);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (20,16,'Justine Sabalza','09090909090','Blk 7 SDH','Taguig City','NCR','1632',0);
+INSERT INTO `addresses` (`address_id`, `user_id`, `recipient_name`, `phone`, `address_line1`, `city`, `province`, `postal_code`, `is_default`) VALUES (21,17,'John Taneo','09121480385','Road 1 #66','Taguig City','NCR','1632',0);
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (1,1,1,'Basic T-Shirt','basic-t-shirt','Everyday cotton T-shirt with a comfortable regular fit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (2,1,1,'Polo Shirt','polo-shirt','Classic polo shirt for casual and smart-casual outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (3,1,1,'Button-Down Shirt','button-down-shirt','Versatile button-down shirt suitable for work or weekends.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (4,1,1,'Hoodie','hoodie','Soft casual hoodie for cool days and relaxed outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (5,1,1,'Sweatshirt','sweatshirt','Comfortable crewneck sweatshirt with a clean silhouette.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (7,1,1,'Henley Shirt','henley-shirt','Casual Henley shirt with a buttoned neckline.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (8,1,1,'Flannel Shirt','flannel-shirt','Soft checked flannel shirt for layering.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (9,1,1,'Long-Sleeve Shirt','long-sleeve-shirt','Long-sleeve basic designed for versatile everyday styling.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (10,1,1,'Knit Sweater','knit-sweater','Textured knit sweater for a comfortable layered look.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (11,1,2,'Slim-Fit Jeans','slim-fit-jeans-4cd593','Slim-fit denim jeans with a modern everyday cut.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (12,1,2,'Straight-Leg Jeans','straight-leg-jeans','Classic straight-leg denim jeans.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (13,1,2,'Cargo Pants','cargo-pants','Utility-inspired cargo pants with practical pockets.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (14,1,2,'Chino Pants','chino-pants','Smart-casual chino pants for work and weekends.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (15,1,2,'Jogger Pants','jogger-pants','Relaxed jogger pants with an easy tapered fit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (16,1,2,'Denim Shorts','denim-shorts','Casual denim shorts for warm-weather outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (17,1,2,'Bermuda Shorts','bermuda-shorts','Versatile knee-length Bermuda shorts.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (18,1,2,'Dress Pants','dress-pants','Tailored-look dress pants for formal occasions.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (19,1,2,'Sweatpants','sweatpants','Soft sweatpants for lounging and casual wear.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (20,1,2,'Linen Trousers','linen-trousers','Breathable linen-blend trousers for warm weather.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (21,1,3,'Baseball Cap','baseball-cap','Adjustable baseball cap with a curved brim.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (22,1,3,'Bucket Hat','bucket-hat','Casual bucket hat for everyday styling.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (23,1,3,'Beanie','beanie','Soft knit beanie for a simple layered look.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (24,1,3,'Fedora Hat','fedora-hat','Classic fedora-inspired hat for a statement outfit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (25,1,3,'Flat Cap','flat-cap','Traditional flat cap with a clean profile.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (26,1,3,'Snapback Cap','snapback-cap','Structured snapback cap with an adjustable closure.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (27,1,3,'Trucker Hat','trucker-hat','Casual trucker cap with a breathable back panel.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (28,1,3,'Beret','beret','Minimal beret for a distinctive casual look.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (29,1,3,'Panama Hat','panama-hat','Lightweight summer hat with a classic brim.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (30,1,3,'Fisherman Beanie','fisherman-beanie','Short cuffed knit beanie with a fisherman style.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (31,2,1,'Basic T-Shirt','w-basic-t-shirt','Everyday basic T-shirt with an easy, versatile fit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (32,2,1,'Crop Top','crop-top','Casual crop top for everyday outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (33,2,1,'Blouse','blouse','Versatile blouse suitable for casual or dressy styling.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (34,2,1,'Camisole','camisole','Lightweight camisole for layering or warm days.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (35,2,1,'Tank Top','w-tank-top','Simple sleeveless tank top for everyday wear.',0,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (36,2,1,'Off-Shoulder Top','off-shoulder-top','Off-shoulder top for a relaxed, dressy look.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (37,2,1,'Halter Top','halter-top','Halter-neck top with a clean, modern style.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (38,2,1,'Bodysuit','bodysuit','Streamlined bodysuit designed for easy outfit pairing.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (39,2,1,'Cardigan','cardigan','Soft cardigan for comfortable layering.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (40,2,1,'Knit Sweater','w-knit-sweater','Knit sweater with a versatile everyday silhouette.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (41,2,2,'Skinny Jeans','skinny-jeans','Skinny-fit denim jeans with a classic finish.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (42,2,2,'Wide-Leg Jeans','wide-leg-jeans','Wide-leg jeans with a relaxed contemporary fit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (43,2,2,'Cargo Pants','w-cargo-pants','Utility-inspired cargo pants with functional pockets.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (44,2,2,'High-Waisted Trousers','high-waisted-trousers','High-waisted trousers for a polished everyday outfit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (45,2,2,'Denim Shorts','w-denim-shorts','Casual denim shorts for warm-weather styling.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (46,2,2,'Mini Skirt','mini-skirt','Versatile mini skirt for casual outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (47,2,2,'Midi Skirt','midi-skirt','Midi skirt designed for easy day-to-day styling.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (48,2,2,'Maxi Skirt','maxi-skirt','Flowing maxi skirt for relaxed, dressy outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (49,2,2,'Leggings','leggings','Stretch leggings for comfortable everyday wear.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (50,2,2,'Palazzo Pants','palazzo-pants','Flowy palazzo pants with a relaxed wide-leg fit.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (51,2,3,'Baseball Cap','w-baseball-cap','Adjustable baseball cap for casual everyday outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (52,2,3,'Bucket Hat','w-bucket-hat','Casual bucket hat with an easy, relaxed shape.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (53,2,3,'Beanie','w-beanie','Soft knit beanie for a simple layered look.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (54,2,3,'Beret','w-beret','Classic beret to complement casual or smart outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (55,2,3,'Wide-Brim Sun Hat','wide-brim-sun-hat','Wide-brim hat for sunny-day outfits.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (56,2,3,'Fedora Hat','w-fedora-hat','Fedora-inspired hat with a versatile silhouette.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (57,2,3,'Straw Hat','straw-hat','Lightweight straw-style hat for warm-weather wear.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (58,2,3,'Visor Cap','visor-cap','Lightweight visor cap for outdoor activities.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (59,2,3,'Cloche Hat','cloche-hat','Cloche-inspired hat with a timeless rounded shape.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (60,2,3,'Newsboy Cap','newsboy-cap','Newsboy cap with a classic casual profile.',1,'2026-10-27 18:20:01');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (61,1,1,'Tank Top','tank-top-dbf378','tank top',0,'2026-10-29 03:25:59');
+INSERT INTO `products` (`product_id`, `product_category_id`, `product_type_id`, `product_name`, `slug`, `description`, `is_active`, `created_at`) VALUES (62,1,1,'Tank Top','tank-top-27d2','tank top na malupet',0,'2026-11-01 16:01:19');
 INSERT INTO `product_images` (`image_id`, `product_id`, `image_path`, `alt_text`, `sort_order`) VALUES (1,1,'uploads/products/basic-t-shirt-main.jpg','Basic T-Shirt product photo',1);
 INSERT INTO `product_images` (`image_id`, `product_id`, `image_path`, `alt_text`, `sort_order`) VALUES (2,2,'uploads/products/polo-shirt-main.jpg','Polo Shirt product photo',1);
 INSERT INTO `product_images` (`image_id`, `product_id`, `image_path`, `alt_text`, `sort_order`) VALUES (3,3,'uploads/products/button-down-shirt-main.jpg','Button-Down Shirt product photo',1);
@@ -1246,27 +1282,27 @@ INSERT INTO `product_variants` (`variant_id`, `product_id`, `size_id`, `color_id
 INSERT INTO `product_variants` (`variant_id`, `product_id`, `size_id`, `color_id`, `sku`, `price`, `stock_quantity`, `is_active`) VALUES (780,60,7,4,'WC-NC-HW-4-7',419.00,5,1);
 INSERT INTO `product_variants` (`variant_id`, `product_id`, `size_id`, `color_id`, `sku`, `price`, `stock_quantity`, `is_active`) VALUES (781,61,4,1,'MC-TT-TP-1-4-61',300.00,30,0);
 INSERT INTO `product_variants` (`variant_id`, `product_id`, `size_id`, `color_id`, `sku`, `price`, `stock_quantity`, `is_active`) VALUES (782,62,4,1,'MC-TT-TP-1-4-62',300.00,20,0);
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (16,9,8,5,'ORD-20261001-A1B201',299.00,79.00,378.00,'Single-item transaction','2026-10-01 02:15:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (17,10,9,6,'ORD-20261003-A1B202',748.00,79.00,827.00,'Multi-item transaction: 2 units across 2 items','2026-10-03 06:20:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (18,11,10,7,'ORD-20261005-A1B203',599.00,79.00,678.00,'Single-item transaction','2026-10-05 01:30:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (19,12,11,6,'ORD-20261008-A1B204',1048.00,79.00,1127.00,'Multi-item transaction: 3 units across 2 items','2026-10-08 09:45:00','2026-10-29 01:14:10');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (20,13,12,2,'ORD-20261010-A1B205',449.00,79.00,528.00,'Single-item transaction','2026-10-10 03:05:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (21,14,13,7,'ORD-20261012-A1B206',898.00,79.00,977.00,'Multi-item transaction: 2 items','2026-10-12 05:10:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (22,9,8,1,'ORD-20261015-A1B207',399.00,79.00,478.00,'Single-item transaction','2026-10-15 08:00:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (23,10,9,6,'ORD-20261018-A1B208',1298.00,79.00,1377.00,'Multi-item transaction: 3 items','2026-10-18 04:25:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (24,11,10,3,'ORD-20261021-A1B209',699.00,79.00,778.00,'Single-item transaction','2026-10-21 00:40:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (25,12,11,6,'ORD-20261024-A1B20A',998.00,79.00,1077.00,'Multi-item transaction: 2 items','2026-10-24 11:15:00','2026-10-27 19:25:26');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (32,16,NULL,6,'ORD-20261027-7D6F9B',2793.00,0.00,2793.00,NULL,'2026-10-27 19:02:49','2026-10-27 19:03:27');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (33,16,NULL,6,'ORD-20261027-13990B',349.00,0.00,349.00,NULL,'2026-10-27 19:10:40','2026-10-27 19:11:16');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (34,16,NULL,6,'ORD-20261027-F81332',899.00,0.00,899.00,NULL,'2026-10-27 19:10:53','2026-10-27 19:11:23');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (35,16,NULL,6,'ORD-20261028-4AEA62',2147.00,0.00,2147.00,NULL,'2026-10-28 07:17:43','2026-10-28 07:18:48');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (36,16,NULL,6,'ORD-20261028-E12A19',519.00,0.00,519.00,NULL,'2026-10-28 07:28:07','2026-10-28 07:47:29');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (37,16,20,6,'ORD-20261028-C2A808',1266.00,0.00,1266.00,NULL,'2026-10-28 07:51:20','2026-10-28 08:02:05');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (40,12,11,6,'ORD-20261029-200E41',799.00,0.00,799.00,'Take good care of the product pls','2026-10-29 02:28:57','2026-10-29 02:29:41');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (41,13,12,6,'ORD-20261029-A56885',1667.00,0.00,1667.00,'Ayusin niyo pag-deliver','2026-10-29 02:35:28','2026-10-29 02:35:41');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (42,10,9,7,'ORD-20261029-F0F5D0',1217.00,0.00,1217.00,'28th Floor po kami','2026-10-29 02:39:51','2026-10-29 02:40:03');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (43,14,13,6,'ORD-20261029-9D35C7',1718.00,0.00,1718.00,NULL,'2026-10-29 03:10:46','2026-10-29 03:11:03');
-INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `shipping_fee`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (44,17,21,6,'ORD-20261029-56D7D1',1647.00,0.00,1647.00,'Take good care of my orders, Thank you.','2026-10-29 03:20:02','2026-10-29 03:20:11');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (16,9,8,5,'ORD-20261001-A1B201',299.00,299.00,'Single-item transaction','2026-10-01 02:15:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (17,10,9,6,'ORD-20261003-A1B202',748.00,748.00,'Multi-item transaction: 2 units across 2 items','2026-10-03 06:20:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (18,11,10,7,'ORD-20261005-A1B203',599.00,599.00,'Single-item transaction','2026-10-05 01:30:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (19,12,11,6,'ORD-20261008-A1B204',1048.00,1048.00,'Multi-item transaction: 3 units across 2 items','2026-10-08 09:45:00','2026-10-29 01:14:10');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (20,13,12,2,'ORD-20261010-A1B205',449.00,449.00,'Single-item transaction','2026-10-10 03:05:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (21,14,13,7,'ORD-20261012-A1B206',898.00,898.00,'Multi-item transaction: 2 items','2026-10-12 05:10:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (22,9,8,1,'ORD-20261015-A1B207',399.00,399.00,'Single-item transaction','2026-10-15 08:00:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (23,10,9,6,'ORD-20261018-A1B208',1298.00,1298.00,'Multi-item transaction: 3 items','2026-10-18 04:25:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (24,11,10,3,'ORD-20261021-A1B209',699.00,699.00,'Single-item transaction','2026-10-21 00:40:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (25,12,11,6,'ORD-20261024-A1B20A',998.00,998.00,'Multi-item transaction: 2 items','2026-10-24 11:15:00','2026-10-27 19:25:26');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (32,16,NULL,6,'ORD-20261027-7D6F9B',2793.00,2793.00,NULL,'2026-10-27 19:02:49','2026-10-27 19:03:27');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (33,16,NULL,6,'ORD-20261027-13990B',349.00,349.00,NULL,'2026-10-27 19:10:40','2026-10-27 19:11:16');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (34,16,NULL,6,'ORD-20261027-F81332',899.00,899.00,NULL,'2026-10-27 19:10:53','2026-10-27 19:11:23');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (35,16,NULL,6,'ORD-20261028-4AEA62',2147.00,2147.00,NULL,'2026-10-28 07:17:43','2026-10-28 07:18:48');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (36,16,NULL,6,'ORD-20261028-E12A19',519.00,519.00,NULL,'2026-10-28 07:28:07','2026-10-28 07:47:29');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (37,16,20,6,'ORD-20261028-C2A808',1266.00,1266.00,NULL,'2026-10-28 07:51:20','2026-10-28 08:02:05');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (40,12,11,6,'ORD-20261029-200E41',799.00,799.00,'Take good care of the product pls','2026-10-29 02:28:57','2026-10-29 02:29:41');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (41,13,12,6,'ORD-20261029-A56885',1667.00,1667.00,'Ayusin niyo pag-deliver','2026-10-29 02:35:28','2026-10-29 02:35:41');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (42,10,9,7,'ORD-20261029-F0F5D0',1217.00,1217.00,'28th Floor po kami','2026-10-29 02:39:51','2026-10-29 02:40:03');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (43,14,13,6,'ORD-20261029-9D35C7',1718.00,1718.00,NULL,'2026-10-29 03:10:46','2026-10-29 03:11:03');
+INSERT INTO `orders` (`order_id`, `user_id`, `address_id`, `order_status_id`, `order_number`, `subtotal`, `total_amount`, `customer_note`, `placed_at`, `updated_at`) VALUES (44,17,21,6,'ORD-20261029-56D7D1',1647.00,1647.00,'Take good care of my orders, Thank you.','2026-10-29 03:20:02','2026-10-29 03:20:11');
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_name_snapshot`, `sku_snapshot`, `size_snapshot`, `color_snapshot`, `unit_price`, `quantity`, `line_total`) VALUES (32,16,1,'Basic T-Shirt','BASICTSHIR-BLA-XS','XS','Black',299.00,1,299.00);
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_name_snapshot`, `sku_snapshot`, `size_snapshot`, `color_snapshot`, `unit_price`, `quantity`, `line_total`) VALUES (33,17,21,'Polo Shirt','POLOSHIRT-BLA-XS','XS','Black',449.00,1,449.00);
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_name_snapshot`, `sku_snapshot`, `size_snapshot`, `color_snapshot`, `unit_price`, `quantity`, `line_total`) VALUES (34,17,1,'Basic T-Shirt','BASICTSHIR-BLA-XS','XS','Black',299.00,1,299.00);
@@ -1305,37 +1341,37 @@ INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_n
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_name_snapshot`, `sku_snapshot`, `size_snapshot`, `color_snapshot`, `unit_price`, `quantity`, `line_total`) VALUES (82,44,139,'Henley Shirt','HENLEYSHIR-OLI-L','L','Olive',399.00,1,399.00);
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_name_snapshot`, `sku_snapshot`, `size_snapshot`, `color_snapshot`, `unit_price`, `quantity`, `line_total`) VALUES (83,44,211,'Slim-Fit Jeans','SLIMFITJEA-NAV-L','L','Navy',919.00,1,919.00);
 INSERT INTO `order_items` (`order_item_id`, `order_id`, `variant_id`, `product_name_snapshot`, `sku_snapshot`, `size_snapshot`, `color_snapshot`, `unit_price`, `quantity`, `line_total`) VALUES (84,44,379,'Trucker Hat','TRUCKERHAT-BLA-OS','One Size','Black',329.00,1,329.00);
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (16,16,378.00,'paid','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (17,17,827.00,'paid','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (18,18,678.00,'paid','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (19,19,1127.00,'pending','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (20,20,528.00,'pending','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (21,21,977.00,'refunded','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (22,22,478.00,'pending','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (23,23,1377.00,'paid','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (24,24,778.00,'pending','2026-10-27 18:55:57');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (25,25,1077.00,'paid','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (16,16,299.00,'paid','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (17,17,748.00,'paid','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (18,18,599.00,'paid','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (19,19,1048.00,'pending','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (20,20,449.00,'pending','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (21,21,898.00,'refunded','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (22,22,399.00,'pending','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (23,23,1298.00,'paid','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (24,24,699.00,'pending','2026-10-27 18:55:57');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (25,25,998.00,'paid','2026-10-27 18:55:57');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (31,32,2793.00,'pending','2026-10-27 19:02:49');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (32,33,349.00,'pending','2026-10-27 19:10:40');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (33,34,899.00,'pending','2026-10-27 19:10:53');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (34,35,2147.00,'pending','2026-10-28 07:17:43');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (35,36,519.00,'pending','2026-10-28 07:28:07');
-INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (36,37,1300.00,'pending','2026-10-28 07:51:20');
+INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (36,37,1266.00,'pending','2026-10-28 07:51:20');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (37,40,799.00,'pending','2026-10-29 02:28:57');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (38,41,1667.00,'pending','2026-10-29 02:35:28');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (39,42,1217.00,'pending','2026-10-29 02:39:51');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (40,43,1718.00,'pending','2026-10-29 03:10:46');
 INSERT INTO `payments` (`payment_id`, `order_id`, `amount`, `payment_status`, `created_at`) VALUES (41,44,1647.00,'pending','2026-10-29 03:20:02');
-INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (9,17,'TXN-17-20261028025557',827.00,'2026-10-27 18:55:57','Auto-recorded when order was marked completed');
+INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (9,17,'TXN-17-20261028025557',748.00,'2026-10-27 18:55:57','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (11,32,'TXN-32-20261028030327',2793.00,'2026-10-27 19:03:27','Auto-recorded when order was marked completed');
-INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (12,25,'TXN-25-20261028030348',1077.00,'2026-10-27 19:03:48','Auto-recorded when order was marked completed');
-INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (13,23,'TXN-23-20261028030403',1377.00,'2026-10-27 19:04:03','Auto-recorded when order was marked completed');
+INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (12,25,'TXN-25-20261028030348',998.00,'2026-10-27 19:03:48','Auto-recorded when order was marked completed');
+INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (13,23,'TXN-23-20261028030403',1298.00,'2026-10-27 19:04:03','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (14,33,'TXN-33-20261028031116',349.00,'2026-10-27 19:11:16','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (15,34,'TXN-34-20261028031123',899.00,'2026-10-27 19:11:23','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (16,35,'TXN-35-20261028151848',2147.00,'2026-10-28 07:18:48','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (17,36,'TXN-36-20261028154729',519.00,'2026-10-28 07:47:29','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (18,37,'TXN-37-20261028160205',1266.00,'2026-10-28 08:02:05','Auto-recorded when order was marked completed');
-INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (22,19,'TXN-19-20261029091410',1127.00,'2026-10-29 01:14:10','Auto-recorded when order was marked completed');
+INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (22,19,'TXN-19-20261029091410',1048.00,'2026-10-29 01:14:10','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (23,40,'TXN-40-20261029102941',799.00,'2026-10-29 02:29:41','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (24,41,'TXN-41-20261029103541',1667.00,'2026-10-29 02:35:41','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (25,43,'TXN-43-20261029111103',1718.00,'2026-10-29 03:11:03','Auto-recorded when order was marked completed');
@@ -1412,18 +1448,18 @@ INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, 
 INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (47,379,17,-1,'SALE','ORD-20261029-56D7D1','2026-10-29 03:20:02');
 INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (48,781,1,30,'RESTOCK','Initial variant stock','2026-10-29 03:25:59');
 INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (49,782,1,20,'RESTOCK','Initial variant stock','2026-11-01 16:01:19');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (8,NULL,'Packaging materials',1850.00,'2026-10-02','Boxes, mailers, tape, and labels for demo orders','2026-10-27 18:55:57');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (9,NULL,'Courier pickup fees',1260.00,'2026-10-06','Sample logistics expense','2026-10-27 18:55:57');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (10,NULL,'Product photography',1500.00,'2026-10-09','Catalog photo shoot expense','2026-10-27 18:55:57');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (11,NULL,'Store internet',1499.00,'2026-10-12','Monthly connectivity expense','2026-10-27 18:55:57');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (13,NULL,'Online promotion',2200.00,'2026-10-20','Sample social media promotion expense','2026-10-27 18:55:57');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (14,NULL,'Courier pickup fees',1640.00,'2026-10-25','Sample logistics expense','2026-10-27 18:55:57');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (16,1,'Utilities',10000.00,'2026-10-29','Water & Electricity','2026-10-29 02:25:04');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (17,1,'Product restock',807.30,'2026-10-29','restock (Baseball Cap)','2026-10-29 03:01:38');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (18,1,'Product restock',538.20,'2026-10-29','restock (Baseball Cap)','2026-10-29 03:08:33');
-INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`, `created_at`) VALUES (20,1,'Adding Product',5400.00,'2026-11-01','Adding \"Tank Top\" on the store','2026-11-01 16:01:19');
-INSERT INTO `cart_items` (`cart_item_id`, `user_id`, `variant_id`, `quantity`, `added_at`, `updated_at`) VALUES (21,9,364,1,'2026-10-29 03:15:08','2026-10-29 03:15:08');
-INSERT INTO `cart_items` (`cart_item_id`, `user_id`, `variant_id`, `quantity`, `added_at`, `updated_at`) VALUES (22,9,13,1,'2026-10-29 03:15:23','2026-10-29 03:15:23');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (8,NULL,'Packaging materials',1850.00,'2026-10-02','Boxes, mailers, tape, and labels for demo orders');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (9,NULL,'Courier pickup fees',1260.00,'2026-10-06','Sample logistics expense');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (10,NULL,'Product photography',1500.00,'2026-10-09','Catalog photo shoot expense');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (11,NULL,'Store internet',1499.00,'2026-10-12','Monthly connectivity expense');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (13,NULL,'Online promotion',2200.00,'2026-10-20','Sample social media promotion expense');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (14,NULL,'Courier pickup fees',1640.00,'2026-10-25','Sample logistics expense');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (16,1,'Utilities',10000.00,'2026-10-29','Water & Electricity');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (17,1,'Product restock',807.30,'2026-10-29','restock (Baseball Cap)');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (18,1,'Product restock',538.20,'2026-10-29','restock (Baseball Cap)');
+INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (20,1,'Adding Product',5400.00,'2026-11-01','Adding \"Tank Top\" on the store');
+INSERT INTO `cart_items` (`cart_item_id`, `user_id`, `variant_id`, `quantity`, `added_at`) VALUES (21,9,364,1,'2026-10-29 03:15:08');
+INSERT INTO `cart_items` (`cart_item_id`, `user_id`, `variant_id`, `quantity`, `added_at`) VALUES (22,9,13,1,'2026-10-29 03:15:23');
 INSERT INTO `product_reviews` (`review_id`, `product_id`, `user_id`, `order_item_id`, `rating`, `review_text`, `created_at`, `updated_at`) VALUES (1,43,12,73,5,'The product is good','2026-10-29 02:30:18','2026-10-29 02:30:18');
 INSERT INTO `product_reviews` (`review_id`, `product_id`, `user_id`, `order_item_id`, `rating`, `review_text`, `created_at`, `updated_at`) VALUES (2,33,13,74,2,'Ang dumi pagdating','2026-10-29 02:36:38','2026-10-29 02:36:38');
 INSERT INTO `product_reviews` (`review_id`, `product_id`, `user_id`, `order_item_id`, `rating`, `review_text`, `created_at`, `updated_at`) VALUES (3,58,13,75,1,'\'Di naman kulay black','2026-10-29 02:37:02','2026-10-29 02:37:02');
@@ -1436,15 +1472,15 @@ SET line_total = ROUND(unit_price * quantity, 2)
 WHERE line_total <> ROUND(unit_price * quantity, 2);
 
 UPDATE orders o
-JOIN (
+LEFT JOIN (
     SELECT order_id, ROUND(SUM(line_total), 2) AS corrected_subtotal
     FROM order_items
     GROUP BY order_id
 ) item_totals ON item_totals.order_id = o.order_id
-SET o.subtotal = item_totals.corrected_subtotal,
-    o.total_amount = item_totals.corrected_subtotal + o.shipping_fee
-WHERE o.subtotal <> item_totals.corrected_subtotal
-   OR o.total_amount <> item_totals.corrected_subtotal + o.shipping_fee;
+SET o.subtotal = COALESCE(item_totals.corrected_subtotal, 0),
+    o.total_amount = COALESCE(item_totals.corrected_subtotal, 0)
+WHERE o.subtotal <> COALESCE(item_totals.corrected_subtotal, 0)
+   OR o.total_amount <> COALESCE(item_totals.corrected_subtotal, 0);
 
 -- Keep an order address only when it belongs to that order's customer.
 UPDATE orders o
@@ -1481,7 +1517,7 @@ JOIN payments newer ON newer.order_id = older.order_id
 UPDATE payments p
 JOIN orders o ON o.order_id = p.order_id
 JOIN order_statuses os ON os.order_status_id = o.order_status_id
-SET p.amount = GREATEST(p.amount, o.total_amount),
+SET p.amount = o.total_amount,
     p.payment_status = CASE
         WHEN os.status_name = 'Completed' THEN 'paid'
         WHEN os.status_name = 'Cancelled' AND p.payment_status = 'paid' THEN 'refunded'
@@ -1669,47 +1705,100 @@ UNION ALL SELECT 'inventory_transactions', COUNT(*) FROM inventory_transactions
 UNION ALL SELECT 'expenses', COUNT(*) FROM expenses
 UNION ALL SELECT 'product_reviews', COUNT(*) FROM product_reviews;
 
-SELECT o.order_id, o.subtotal, SUM(oi.line_total) AS item_total,
-       o.shipping_fee, o.total_amount
-FROM orders o JOIN order_items oi ON oi.order_id = o.order_id
-GROUP BY o.order_id, o.subtotal, o.shipping_fee, o.total_amount
-HAVING o.subtotal <> SUM(oi.line_total)
-    OR o.total_amount <> o.subtotal + o.shipping_fee;
-
-SELECT o.order_id
-FROM orders o LEFT JOIN order_items oi ON oi.order_id = o.order_id
-GROUP BY o.order_id
-HAVING COUNT(oi.order_item_id) = 0;
-
-SELECT o.order_id
-FROM orders o JOIN order_statuses os ON os.order_status_id = o.order_status_id
-LEFT JOIN sales s ON s.order_id = o.order_id
-WHERE os.status_name = 'Completed' AND s.sale_id IS NULL;
-
-SELECT user_id, product_id, COUNT(*) AS review_count
-FROM product_reviews
-GROUP BY user_id, product_id
-HAVING COUNT(*) > 1;
-
-SELECT sku, COUNT(*) AS sku_count
-FROM product_variants
-GROUP BY sku
-HAVING COUNT(*) > 1;
-
-SELECT COUNT(*) AS order_transaction_view_rows FROM vw_order_transaction_details;
-
--- Remove shipping fees from stored order totals and drop the obsolete column.
-UPDATE orders
-SET total_amount = subtotal
-WHERE total_amount <> subtotal;
-
-UPDATE sales s
+SELECT 'orders_total_equals_subtotal_mismatches' AS check_name, COUNT(*) AS mismatch_count
+FROM orders WHERE total_amount <> subtotal
+UNION ALL
+SELECT 'orders_subtotal_vs_line_sum_mismatches', COUNT(*)
+FROM (
+    SELECT o.order_id
+    FROM orders o
+    LEFT JOIN order_items oi ON oi.order_id = o.order_id
+    GROUP BY o.order_id, o.subtotal
+    HAVING o.subtotal <> COALESCE(ROUND(SUM(oi.line_total), 2), 0)
+) mismatched_orders
+UNION ALL
+SELECT 'order_item_line_math_mismatches', COUNT(*)
+FROM order_items
+WHERE line_total <> ROUND(unit_price * quantity, 2)
+UNION ALL
+SELECT 'sales_amount_mismatches', COUNT(*)
+FROM sales s
 JOIN orders o ON o.order_id = s.order_id
-SET s.total_amount = o.total_amount
-WHERE s.total_amount <> o.total_amount;
+WHERE s.total_amount <> o.total_amount
+UNION ALL
+SELECT 'payment_amount_mismatches', COUNT(*)
+FROM payments p
+JOIN orders o ON o.order_id = p.order_id
+WHERE p.amount <> o.total_amount
+UNION ALL
+SELECT 'sales_status_mismatches', COUNT(*)
+FROM (
+    SELECT o.order_id, os.status_name, COUNT(s.sale_id) AS sale_count
+    FROM orders o
+    JOIN order_statuses os ON os.order_status_id = o.order_status_id
+    LEFT JOIN sales s ON s.order_id = o.order_id
+    GROUP BY o.order_id, os.status_name
+    HAVING (os.status_name = 'Completed' AND COUNT(s.sale_id) <> 1)
+        OR (os.status_name <> 'Completed' AND COUNT(s.sale_id) <> 0)
+) invalid_sales
+UNION ALL
+SELECT 'duplicate_transaction_references', COUNT(*)
+FROM (
+    SELECT transaction_reference
+    FROM sales
+    GROUP BY transaction_reference
+    HAVING COUNT(*) > 1
+) duplicate_references
+UNION ALL
+SELECT 'latest_order_history_status_mismatches', COUNT(*)
+FROM orders o
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM order_status_history h
+    WHERE h.order_id = o.order_id
+)
+OR o.order_status_id <> (
+    SELECT h.order_status_id
+    FROM order_status_history h
+    WHERE h.order_id = o.order_id
+    ORDER BY h.changed_at DESC, h.history_id DESC
+    LIMIT 1
+)
+UNION ALL
+SELECT 'duplicate_reviews_per_user_product', COUNT(*)
+FROM (
+    SELECT user_id, product_id
+    FROM product_reviews
+    GROUP BY user_id, product_id
+    HAVING COUNT(*) > 1
+) duplicate_reviews
+UNION ALL
+SELECT 'review_order_item_owner_product_mismatches', COUNT(*)
+FROM product_reviews r
+JOIN order_items oi ON oi.order_item_id = r.order_item_id
+JOIN orders o ON o.order_id = oi.order_id
+LEFT JOIN product_variants v ON v.variant_id = oi.variant_id
+WHERE r.user_id <> o.user_id
+   OR v.variant_id IS NULL
+   OR r.product_id <> v.product_id;
 
-ALTER TABLE orders
-    DROP CONSTRAINT `CONSTRAINT_1`,
-    DROP COLUMN shipping_fee,
-    ADD CONSTRAINT chk_orders_nonnegative_amounts
-        CHECK (subtotal >= 0 AND total_amount >= 0);
+SELECT 'vw_order_transaction_details_rows' AS check_name, COUNT(*) AS result_count
+FROM vw_order_transaction_details;
+SELECT 'vw_order_transaction_details_exists' AS check_name, COUNT(*) AS result_count
+FROM information_schema.VIEWS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'vw_order_transaction_details';
+SELECT 'completed_sale_insert_trigger_exists' AS check_name, COUNT(*) AS result_count
+FROM information_schema.TRIGGERS
+WHERE TRIGGER_SCHEMA = DATABASE()
+  AND TRIGGER_NAME = 'trg_orders_insert_completed_sale';
+SELECT 'completed_sale_update_trigger_exists' AS check_name, COUNT(*) AS result_count
+FROM information_schema.TRIGGERS
+WHERE TRIGGER_SCHEMA = DATABASE()
+  AND TRIGGER_NAME = 'trg_orders_completed_to_sale';
+SELECT 'uq_review_user_product_exists' AS check_name, COUNT(DISTINCT INDEX_NAME) AS result_count
+FROM information_schema.STATISTICS
+WHERE TABLE_SCHEMA = DATABASE()
+  AND TABLE_NAME = 'product_reviews'
+  AND INDEX_NAME = 'uq_review_user_product'
+  AND NON_UNIQUE = 0;

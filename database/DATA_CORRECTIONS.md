@@ -33,3 +33,65 @@ These accounts use personal email providers rather than the project's sample
 
 - User 16: `justinesabalza0101@gmail.com`
 - User 17: `johntaneo@gmail.com`
+
+## Database design and amount reconciliation
+
+The fresh-install SQL and existing-database migration remove these columns:
+
+- `orders.shipping_fee`: shipping is no longer included in order totals.
+- `addresses.created_at`, `expenses.created_at`, `users.updated_at`,
+  `products.updated_at`, and `cart_items.updated_at`: these fields are not used
+  by the application.
+
+Line-item arithmetic already matched the line-item snapshots in the original
+database: no `order_items.line_total` or `orders.subtotal` values needed
+correction. The following order totals were changed to equal their subtotals:
+
+| Table | ID | Old amount | New amount |
+|---|---:|---:|---:|
+| `orders` | 16 | 378.00 | 299.00 |
+| `orders` | 17 | 827.00 | 748.00 |
+| `orders` | 18 | 678.00 | 599.00 |
+| `orders` | 19 | 1127.00 | 1048.00 |
+| `orders` | 20 | 528.00 | 449.00 |
+| `orders` | 21 | 977.00 | 898.00 |
+| `orders` | 22 | 478.00 | 399.00 |
+| `orders` | 23 | 1377.00 | 1298.00 |
+| `orders` | 24 | 778.00 | 699.00 |
+| `orders` | 25 | 1077.00 | 998.00 |
+
+Sales are updated to their associated corrected order totals:
+
+| Table | ID | Old amount | New amount |
+|---|---:|---:|---:|
+| `sales` | 9 | 827.00 | 748.00 |
+| `sales` | 12 | 1077.00 | 998.00 |
+| `sales` | 13 | 1377.00 | 1298.00 |
+| `sales` | 22 | 1127.00 | 1048.00 |
+
+Payments are updated to their associated corrected order totals:
+
+| Table | ID | Old amount | New amount |
+|---|---:|---:|---:|
+| `payments` | 16 | 378.00 | 299.00 |
+| `payments` | 17 | 827.00 | 748.00 |
+| `payments` | 18 | 678.00 | 599.00 |
+| `payments` | 19 | 1127.00 | 1048.00 |
+| `payments` | 20 | 528.00 | 449.00 |
+| `payments` | 21 | 977.00 | 898.00 |
+| `payments` | 22 | 478.00 | 399.00 |
+| `payments` | 23 | 1377.00 | 1298.00 |
+| `payments` | 24 | 778.00 | 699.00 |
+| `payments` | 25 | 1077.00 | 998.00 |
+| `payments` | 36 | 1300.00 | 1266.00 |
+
+The following columns are kept on purpose: `orders.customer_note` stores the
+customer's order note; `order_items.sku_snapshot` preserves the purchased SKU;
+`sales.notes` records sale context; `products.slug` is used for product URLs;
+`product_categories.description` is category content; `addresses.is_default`
+selects a preferred address; and `orders.updated_at` is maintained by the PHP
+order-status update. All columns in `order_status_history` and
+`inventory_transactions` remain as intentional audit data.
+
+No PHP files were changed. The dropped columns have no PHP references.
+PHP-dependent or intentional fields listed above were not removed or changed.

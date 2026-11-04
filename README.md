@@ -13,18 +13,16 @@ admin panel for products, orders, inventory, and reports.
 ## Setup
 
 1. Place the project in your web server's document root.
-2. To restore the store on a new device, import
-   `database/clothing_store_complete.sql` using phpMyAdmin or the MySQL client.
-   It creates the `clothing_store_fixed` database, tables, view, triggers, and
-   data. This import replaces existing tables; do not import it over a database
-   you want to keep. It is the only full database import file provided.
-3. For an existing installation, keep using its current database; this
-   complete import is intended for restoring the store on a new device, not
-   upgrading an existing database. To remove the shipping fee from existing
-   order totals and drop the column, run
+2. For a fresh install, import `database/clothing_store_complete.sql` using
+   phpMyAdmin or the MySQL client. It creates the `clothing_store_fixed`
+   database, tables, view, triggers, and data. Re-running it reloads the seed
+   data in place; do not import it over a database whose data you want to keep.
+3. To upgrade an existing installation, back up the database first, then run
+   `database/migration_fix_existing_database.sql` against it. The migration
+   reconciles order, sales, and payment amounts, removes obsolete columns, and
+   updates the view and triggers. The older
    `database/migration_remove_shipping_fee_from_order_transaction_details.sql`
-   against that database. This also replaces the order transaction view
-   without the shipping fee.
+   is superseded by this migration and should not be used for new upgrades.
 4. Install PHP dependencies from the project root:
 
    ```sh

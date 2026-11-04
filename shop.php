@@ -22,6 +22,7 @@ foreach (
         $filterError = "Choose a valid " . $label . " filter.";
     }
 }
+
 $sql = 'SELECT p.product_id,p.product_name,mp.min_price,mp.max_price,pi.image_path,c.category_name
     FROM products p
     JOIN product_categories c ON c.product_category_id=p.product_category_id
