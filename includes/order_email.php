@@ -144,7 +144,7 @@ function build_order_receipt_html(
     $statusColor = order_status_color($order["status_name"]);
     $html =
         '<!DOCTYPE html><html><head><meta charset="UTF-8"><style>' .
-        '@page { margin: 30px; } body { margin: 0; background: #f4f4f5; font-family: Arial, Helvetica, sans-serif; color: #111827; font-size: 11px; } ' .
+        '@page { margin: 30px; } body { margin: 0; background: #f4f4f5; font-family: "DejaVu Sans", sans-serif; color: #111827; font-size: 11px; } ' .
         'table { border-collapse: collapse; } .items { font-size: 11px; } .items th, .items td { padding: 10px 8px; border-bottom: 1px solid #e4e4e7; } ' .
         '.items th { background: #f9fafb; text-align: left; } .right { text-align: right; } .center { text-align: center; } .muted { color: #6b7280; font-size: 9px; } ' .
         '</style></head><body><table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">' .
@@ -265,8 +265,9 @@ function generate_receipt_pdf(PDO $pdo, int $orderId): array
         throw new RuntimeException("The order details could not be loaded.");
     }
     $it = $pdo->prepare(
-        "SELECT product_name_snapshot,size_snapshot,color_snapshot,quantity,unit_price,line_total
-        FROM vw_order_transaction_details
+        "SELECT product_name_snapshot,size_snapshot,color_snapshot,quantity,unit_price,
+            ROUND(unit_price * quantity, 2) AS line_total
+        FROM order_items
         WHERE order_id=?
         ORDER BY order_item_id",
     );
@@ -289,7 +290,9 @@ function generate_receipt_pdf(PDO $pdo, int $orderId): array
     $detailsQuery->execute([$orderId]);
     $details = $detailsQuery->fetch();
     $pdfHtml = build_order_receipt_html($o, $items, $details);
-    $dompdf = new \Dompdf\Dompdf();
+    $options = new \Dompdf\Options();
+    $options->setDefaultFont("DejaVu Sans");
+    $dompdf = new \Dompdf\Dompdf($options);
     $dompdf->loadHtml($pdfHtml, "UTF-8");
     $dompdf->setPaper("A4");
     $dompdf->render();

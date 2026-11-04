@@ -128,14 +128,16 @@ $formReviewText = $reviewPost
     : ($savedReview["review_text"] ?? "");
 
 $reviews = $pdo->prepare(
-    'SELECT pr.rating,pr.review_text,pr.created_at,pr.updated_at,u.first_name,u.last_name
+    "SELECT pr.rating,pr.review_text,pr.created_at,pr.updated_at,
+        COALESCE(NULLIF(TRIM(CONCAT(u.first_name,' ',u.last_name)),''),'Customer') AS reviewer_name
     FROM product_reviews pr
-    INNER JOIN users u ON u.user_id=pr.user_id
+    LEFT JOIN users u ON u.user_id=pr.user_id
     WHERE pr.product_id=?
-    ORDER BY pr.created_at DESC',
+    ORDER BY pr.created_at DESC,pr.review_id DESC",
 );
 $reviews->execute([$id]);
 $reviews = $reviews->fetchAll();
+$reviewCount = count($reviews);
 
 if (
     $_SERVER["REQUEST_METHOD"] === "POST" &&
@@ -330,7 +332,7 @@ require __DIR__ . "/includes/header.php";
 </div>
 
 <section id="reviews">
-    <h2>Customer reviews</h2>
+    <h2>Customer reviews (<?= $reviewCount ?>)</h2>
     <?php if ($reviewError): ?>
         <div class="notice error"><?= e($reviewError) ?></div>
     <?php endif; ?>
@@ -339,7 +341,7 @@ require __DIR__ . "/includes/header.php";
     <?php endif; ?>
     <?php foreach ($reviews as $r): ?>
         <article class="review">
-            <b><?= e($r["first_name"] . " " . $r["last_name"]) ?></b>
+            <b><?= e($r["reviewer_name"]) ?></b>
             <span class="stars" aria-label="<?= (int) $r["rating"] ?> out of 5">
                 <?= str_repeat("★", (int) $r["rating"]) ?>
             </span>

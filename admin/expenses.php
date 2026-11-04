@@ -42,7 +42,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $error = "Choose a valid expense to update.";
             } else {
                 $q = $pdo->prepare(
-                    "UPDATE expenses SET expense_name=?,amount=?,expense_date=?,notes=? WHERE expense_id=?",
+                    "UPDATE expenses SET expense_name=?,amount=?,expense_date=?,notes=? 
+                    WHERE expense_id=?",
                 );
                 $q->execute([$name, $amount, $date, $notes, $expenseId]);
                 if ($q->rowCount() === 0) {
@@ -68,7 +69,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             }
         } elseif ($action === "create") {
             $q = $pdo->prepare(
-                "INSERT INTO expenses(recorded_by,expense_name,amount,expense_date,notes) VALUES(?,?,?,?,?)",
+                "INSERT INTO expenses(recorded_by,expense_name,amount,expense_date,notes) 
+                VALUES(?,?,?,?,?)",
             );
             $q->execute([
                 current_user()["id"],
@@ -98,7 +100,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 $editId = filter_var($_GET["edit"] ?? null, FILTER_VALIDATE_INT);
 if ($editExpense === null && $editId !== false && $editId !== null && $editId > 0) {
     $q = $pdo->prepare(
-        "SELECT expense_id,expense_name,amount,expense_date,notes FROM expenses WHERE expense_id=?",
+        "SELECT expense_id,expense_name,amount,expense_date,notes 
+        FROM expenses 
+        WHERE expense_id=?",
     );
     $q->execute([$editId]);
     $editExpense = $q->fetch() ?: null;

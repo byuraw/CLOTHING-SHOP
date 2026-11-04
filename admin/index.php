@@ -15,6 +15,7 @@ $newOrders = (int) $pdo
 $products = (int) $pdo
     ->query("SELECT COUNT(*) FROM products WHERE is_active=1")
     ->fetchColumn();
+    
 $customers = (int) $pdo
     ->query(
         "SELECT COUNT(*)

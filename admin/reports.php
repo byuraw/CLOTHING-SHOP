@@ -4,10 +4,6 @@ require_admin();
 $today = $pdo->query("SELECT CURRENT_DATE")->fetchColumn();
 $from = $_GET["from"] ?? substr($today, 0, 7) . "-01";
 $to = $_GET["to"] ?? $today;
-$transactionType = $_GET["transaction_type"] ?? "all";
-if (!in_array($transactionType, ["all", "single", "multi"], true)) {
-    $transactionType = "all";
-}
 $args = [$from, $to];
 $q = $pdo->prepare(
     "SELECT COUNT(*) orders_count,COALESCE(SUM(o.subtotal),0) sales
@@ -20,45 +16,19 @@ $q->execute($args);
 
 $summary = $q->fetch();
 $transactionQuery = $pdo->prepare(
-    "SELECT
-        s.transaction_reference,
-        s.sale_date,
-        o.order_number,
-        CONCAT(u.first_name, ' ', u.last_name) AS customer_name,
-        COALESCE(items.item_count, 0) AS item_count,
-        COALESCE(items.total_quantity, 0) AS total_quantity,
-        o.subtotal AS total_amount,
-        (
-            SELECT p.amount
-            FROM payments p
-            WHERE p.order_id = s.order_id
-            ORDER BY p.created_at DESC, p.payment_id DESC
-            LIMIT 1
-        ) AS payment_amount
-    FROM sales s
-    INNER JOIN orders o ON o.order_id = s.order_id
-    INNER JOIN users u ON u.user_id = o.user_id
-    LEFT JOIN (
-        SELECT order_id, COUNT(*) AS item_count, SUM(quantity) AS total_quantity
-        FROM order_items
-        GROUP BY order_id
-    ) items ON items.order_id = s.order_id
+    "SELECT details.placed_at,details.status_name,details.user_id,
+        details.customer_name,details.order_number,details.order_item_id,
+        details.product_name_snapshot,details.size_snapshot,details.color_snapshot,
+        details.unit_price,details.quantity,s.transaction_reference,s.sale_date,
+        s.total_amount AS sale_total
+    FROM vw_order_transaction_details details
+    INNER JOIN sales s ON s.order_id = details.order_id
     WHERE s.sale_date >= ?
       AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)
-      AND (
-        ? = 'all'
-        OR (? = 'single' AND COALESCE(items.item_count, 0) = 1)
-        OR (? = 'multi' AND COALESCE(items.item_count, 0) > 1)
-      )
-    ORDER BY s.sale_date DESC, s.sale_id DESC",
+      AND details.status_name = 'Completed'
+    ORDER BY s.sale_date DESC,s.sale_id DESC,details.order_item_id",
 );
-$transactionQuery->execute([
-    $from,
-    $to,
-    $transactionType,
-    $transactionType,
-    $transactionType,
-]);
+$transactionQuery->execute($args);
 $transactions = $transactionQuery->fetchAll();
 $q = $pdo->prepare(
     "SELECT COALESCE(SUM(amount),0) FROM expenses WHERE expense_date BETWEEN ? AND ?",
@@ -116,32 +86,24 @@ require __DIR__ . "/../includes/admin_header.php";
 
 <h2>Transactions</h2>
 
-<form class="transaction-filter" method="get">
-  <input type="hidden" name="from" value="<?= e($from) ?>" />
-  <input type="hidden" name="to" value="<?= e($to) ?>" />
-  <label>Transaction type
-    <select name="transaction_type">
-      <option value="all" <?= $transactionType === "all" ? "selected" : "" ?>>All transactions</option>
-      <option value="single" <?= $transactionType === "single" ? "selected" : "" ?>>Single-item</option>
-      <option value="multi" <?= $transactionType === "multi" ? "selected" : "" ?>>Multi-item</option>
-    </select>
-  </label>
-  <button>Filter transactions</button>
-</form>
-
 <div class="table-wrap">
   <table>
     <thead>
       <tr>
-        <th>Date</th>
-        <th>Transaction</th>
-        <th>Order</th>
+        <th>Sale date</th>
+        <th>Transaction reference</th>
+        <th>Order number</th>
+        <th>Order date</th>
+        <th>Status</th>
+        <th>Customer ID</th>
         <th>Customer</th>
-        <th>Item lines</th>
-        <th>Units</th>
-        <th>Type</th>
-        <th>Total</th>
-        <th>Payment amount</th>
+        <th>Order item ID</th>
+        <th>Product</th>
+        <th>Size</th>
+        <th>Color</th>
+        <th>Unit price</th>
+        <th>Quantity</th>
+        <th>Sale total</th>
       </tr>
     </thead>
     <tbody>
@@ -150,22 +112,21 @@ require __DIR__ . "/../includes/admin_header.php";
         <td><?= e($transaction["sale_date"]) ?></td>
         <td><?= e($transaction["transaction_reference"]) ?></td>
         <td><?= e($transaction["order_number"]) ?></td>
+        <td><?= e($transaction["placed_at"]) ?></td>
+        <td><?= e($transaction["status_name"]) ?></td>
+        <td><?= (int) $transaction["user_id"] ?></td>
         <td><?= e($transaction["customer_name"]) ?></td>
-        <td><?= (int) $transaction["item_count"] ?></td>
-        <td><?= (int) $transaction["total_quantity"] ?></td>
-        <td><?= (int) $transaction["item_count"] === 1
-            ? "Single-item"
-            : ((int) $transaction["item_count"] > 1
-                ? "Multi-item"
-                : "No items") ?></td>
-        <td>₱<?= number_format((float) $transaction["total_amount"], 2) ?></td>
-        <td><?= $transaction["payment_amount"] === null
-            ? "—"
-            : "₱" . number_format((float) $transaction["payment_amount"], 2) ?></td>
+        <td><?= (int) $transaction["order_item_id"] ?></td>
+        <td><?= e($transaction["product_name_snapshot"]) ?></td>
+        <td><?= e($transaction["size_snapshot"] ?? "One size") ?></td>
+        <td><?= e($transaction["color_snapshot"] ?? "Default") ?></td>
+        <td>₱<?= number_format((float) $transaction["unit_price"], 2) ?></td>
+        <td><?= (int) $transaction["quantity"] ?></td>
+        <td>₱<?= number_format((float) $transaction["sale_total"], 2) ?></td>
       </tr>
       <?php endforeach; ?>
       <?php if (!$transactions): ?>
-      <tr><td colspan="9" class="empty-note">No transactions match these filters.</td></tr>
+      <tr><td colspan="14" class="empty-note">No transactions match this date range.</td></tr>
       <?php endif; ?>
     </tbody>
   </table>

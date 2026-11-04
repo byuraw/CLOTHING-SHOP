@@ -23,12 +23,13 @@ if (!$o) {
 }
 
 $i = $pdo->prepare(
-    'SELECT product_name_snapshot,size_snapshot,color_snapshot,unit_price,quantity,line_total
-    FROM vw_order_transaction_details
-    WHERE order_id=? AND user_id=?
+    'SELECT product_name_snapshot,size_snapshot,color_snapshot,unit_price,quantity,
+        ROUND(unit_price * quantity, 2) AS line_total
+    FROM order_items
+    WHERE order_id=?
     ORDER BY order_item_id',
 );
-$i->execute([$id, current_user()["id"]]);
+$i->execute([$id]);
 $items = $i->fetchAll();
 $pageTitle = "Order details";
 require __DIR__ . "/includes/header.php";
