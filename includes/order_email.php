@@ -255,8 +255,8 @@ function generate_receipt_pdf(PDO $pdo, int $orderId): array
     $q = $pdo->prepare(
         "SELECT o.order_number,o.subtotal,o.placed_at,u.email,u.first_name,u.last_name,os.status_name
         FROM orders o
-        JOIN users u ON u.user_id=o.user_id
-        JOIN order_statuses os ON os.order_status_id=o.order_status_id
+        INNER JOIN users u ON u.user_id=o.user_id
+        INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
         WHERE o.order_id=?",
     );
     $q->execute([$orderId]);

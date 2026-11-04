@@ -42,7 +42,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $pdo->beginTransaction();
     try {
         $s = $pdo->prepare(
-            "SELECT order_status_id,order_number,total_amount FROM orders WHERE order_id=? FOR UPDATE",
+            "SELECT order_status_id,total_amount FROM orders WHERE order_id=? FOR UPDATE",
         );
         $s->execute([$id]);
         $old = $s->fetch();
@@ -85,27 +85,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         $line["quantity"],
                         $line["variant_id"],
                     ]);
-                    log_inventory(
-                        $pdo,
-                        (int) $line["variant_id"],
-                        (int) current_user()["id"],
-                        (int) $line["quantity"],
-                        "RESTOCK",
-                        $old["order_number"],
-                    );
                 }
             }
             $pdo->prepare(
                 "UPDATE orders SET order_status_id=?,updated_at=CURRENT_TIMESTAMP WHERE order_id=?",
             )->execute([$new, $id]);
             $statusChanged = true;
-            log_order_status(
-                $pdo,
-                $id,
-                $new,
-                (int) current_user()["id"],
-                "Changed from " . $oldLabel . " to " . $newLabel,
-            );
         }
         $pdo->commit();
         if ($statusChanged) {
@@ -179,8 +164,8 @@ $ordersQuery = $pdo->prepare(
         (SELECT p.amount FROM payments p WHERE p.order_id=o.order_id ORDER BY p.created_at DESC,p.payment_id DESC LIMIT 1) AS payment_amount,
         o.placed_at,os.status_name,u.first_name,u.last_name
     FROM orders o
-    JOIN order_statuses os ON os.order_status_id=o.order_status_id
-    JOIN users u ON u.user_id=o.user_id
+    INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
+    INNER JOIN users u ON u.user_id=o.user_id
     " .
         ($orderConditions
             ? "WHERE " . implode(" AND ", $orderConditions)

@@ -12,8 +12,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $s = $pdo->prepare(
             'SELECT ci.variant_id,ci.quantity,p.product_name,pv.sku,pv.price,pv.stock_quantity,sz.size_name,co.color_name
             FROM cart_items ci
-            JOIN product_variants pv ON pv.variant_id=ci.variant_id
-            JOIN products p ON p.product_id=pv.product_id
+            INNER JOIN product_variants pv ON pv.variant_id=ci.variant_id
+            INNER JOIN products p ON p.product_id=pv.product_id
             LEFT JOIN sizes sz ON sz.size_id=pv.size_id
             LEFT JOIN colors co ON co.color_id=pv.color_id
             WHERE ci.user_id=? AND pv.is_active=1 AND p.is_active=1 FOR UPDATE',
@@ -131,21 +131,12 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
 
-            log_inventory(
-                $pdo,
-                (int) $i["variant_id"],
-                (int) $uid,
-                -$qty,
-                "SALE",
-                $number,
-            );
         }
 
         $pay = $pdo->prepare(
             "INSERT INTO payments(order_id,amount,payment_status) VALUES(?,?,'pending')",
         );
         $pay->execute([$orderId, $paymentAmount]);
-        log_order_status($pdo, $orderId, $status, $uid, "Order placed");
         $del = $pdo->prepare("DELETE FROM cart_items WHERE user_id=?");
         $del->execute([$uid]);
         $pdo->commit();
@@ -182,8 +173,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 $q = $pdo->prepare(
     'SELECT ci.quantity,p.product_name,pv.price,pv.stock_quantity
     FROM cart_items ci
-    JOIN product_variants pv ON pv.variant_id=ci.variant_id
-    JOIN products p ON p.product_id=pv.product_id
+    INNER JOIN product_variants pv ON pv.variant_id=ci.variant_id
+    INNER JOIN products p ON p.product_id=pv.product_id
     WHERE ci.user_id=? AND pv.is_active=1 AND p.is_active=1',
 );
 $q->execute([current_user()["id"]]);

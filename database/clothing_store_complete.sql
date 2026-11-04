@@ -206,37 +206,6 @@ CREATE TABLE IF NOT EXISTS `sales` (
   CONSTRAINT `CONSTRAINT_1` CHECK (`total_amount` >= 0)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
-CREATE TABLE IF NOT EXISTS `order_status_history` (
-  `history_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `order_id` bigint(20) unsigned NOT NULL,
-  `order_status_id` tinyint(3) unsigned NOT NULL,
-  `changed_by` bigint(20) unsigned DEFAULT NULL,
-  `note` varchar(500) DEFAULT NULL,
-  `changed_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`history_id`),
-  KEY `order_status_id` (`order_status_id`),
-  KEY `changed_by` (`changed_by`),
-  KEY `idx_history_order_time` (`order_id`,`changed_at`),
-  CONSTRAINT `order_status_history_ibfk_1` FOREIGN KEY (`order_id`) REFERENCES `orders` (`order_id`) ON DELETE CASCADE,
-  CONSTRAINT `order_status_history_ibfk_2` FOREIGN KEY (`order_status_id`) REFERENCES `order_statuses` (`order_status_id`),
-  CONSTRAINT `order_status_history_ibfk_3` FOREIGN KEY (`changed_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-CREATE TABLE IF NOT EXISTS `inventory_transactions` (
-  `inventory_transaction_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `variant_id` bigint(20) unsigned NOT NULL,
-  `changed_by` bigint(20) unsigned DEFAULT NULL,
-  `quantity_change` int(11) NOT NULL,
-  `reason` varchar(100) NOT NULL,
-  `reference_text` varchar(100) DEFAULT NULL,
-  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`inventory_transaction_id`),
-  KEY `changed_by` (`changed_by`),
-  KEY `idx_inventory_variant_time` (`variant_id`,`created_at`),
-  CONSTRAINT `inventory_transactions_ibfk_1` FOREIGN KEY (`variant_id`) REFERENCES `product_variants` (`variant_id`),
-  CONSTRAINT `inventory_transactions_ibfk_2` FOREIGN KEY (`changed_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
 CREATE TABLE IF NOT EXISTS `expenses` (
   `expense_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `recorded_by` bigint(20) unsigned DEFAULT NULL,
@@ -289,8 +258,6 @@ CREATE TABLE IF NOT EXISTS `product_reviews` (
 DELETE FROM `product_reviews`;
 DELETE FROM `cart_items`;
 DELETE FROM `expenses`;
-DELETE FROM `inventory_transactions`;
-DELETE FROM `order_status_history`;
 DELETE FROM `sales`;
 DELETE FROM `payments`;
 DELETE FROM `order_items`;
@@ -322,8 +289,6 @@ ALTER TABLE `orders` AUTO_INCREMENT=1;
 ALTER TABLE `order_items` AUTO_INCREMENT=1;
 ALTER TABLE `payments` AUTO_INCREMENT=1;
 ALTER TABLE `sales` AUTO_INCREMENT=1;
-ALTER TABLE `order_status_history` AUTO_INCREMENT=1;
-ALTER TABLE `inventory_transactions` AUTO_INCREMENT=1;
 ALTER TABLE `expenses` AUTO_INCREMENT=1;
 ALTER TABLE `cart_items` AUTO_INCREMENT=1;
 ALTER TABLE `product_reviews` AUTO_INCREMENT=1;
@@ -348,9 +313,9 @@ SELECT
     o.subtotal,
     o.total_amount
 FROM orders o
-JOIN users u ON u.user_id=o.user_id
-JOIN order_statuses os ON os.order_status_id=o.order_status_id
-JOIN order_items oi ON oi.order_id=o.order_id;
+INNER JOIN users u ON u.user_id=o.user_id
+INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
+INNER JOIN order_items oi ON oi.order_id=o.order_id;
 
 -- Backup data (explicit columns, FK-safe order).
 INSERT INTO `account_statuses` (`status_id`, `status_name`) VALUES (1,'Active');
@@ -1376,78 +1341,6 @@ INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amou
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (24,41,'TXN-41-20261029103541',1667.00,'2026-10-29 02:35:41','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (25,43,'TXN-43-20261029111103',1718.00,'2026-10-29 03:11:03','Auto-recorded when order was marked completed');
 INSERT INTO `sales` (`sale_id`, `order_id`, `transaction_reference`, `total_amount`, `sale_date`, `notes`) VALUES (26,44,'TXN-44-20261029112011',1647.00,'2026-10-29 03:20:11','Auto-recorded when order was marked completed');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (18,16,5,NULL,'Sample data status: Delivered','2026-10-01 02:15:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (19,17,6,NULL,'Sample data status: Completed','2026-10-03 06:20:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (20,18,5,NULL,'Sample data status: Delivered','2026-10-05 01:30:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (21,19,4,NULL,'Sample data status: Shipped','2026-10-08 09:45:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (22,20,2,NULL,'Sample data status: Processing','2026-10-10 03:05:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (23,21,7,NULL,'Sample data status: Cancelled','2026-10-12 05:10:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (24,22,1,NULL,'Sample data status: Pending','2026-10-15 08:00:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (25,23,5,NULL,'Sample data status: Delivered','2026-10-18 04:25:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (26,24,3,NULL,'Sample data status: Packed','2026-10-21 00:40:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (27,25,5,NULL,'Sample data status: Delivered','2026-10-24 11:15:00');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (33,18,7,1,'Changed from Delivered to Cancelled','2026-10-27 19:00:19');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (34,32,1,16,'Order placed','2026-10-27 19:02:49');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (35,32,6,1,'Changed from Pending to Completed','2026-10-27 19:03:27');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (36,25,6,1,'Changed from Delivered to Completed','2026-10-27 19:03:48');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (37,23,6,1,'Changed from Delivered to Completed','2026-10-27 19:04:03');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (38,33,1,16,'Order placed','2026-10-27 19:10:40');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (39,34,1,16,'Order placed','2026-10-27 19:10:53');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (40,33,6,1,'Changed from Pending to Completed','2026-10-27 19:11:16');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (41,34,6,1,'Changed from Pending to Completed','2026-10-27 19:11:23');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (42,35,1,16,'Order placed','2026-10-28 07:17:43');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (43,35,6,1,'Changed from Pending to Completed','2026-10-28 07:18:48');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (44,36,1,16,'Order placed','2026-10-28 07:28:07');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (45,36,6,1,'Changed from Pending to Completed','2026-10-28 07:47:29');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (46,37,1,16,'Order placed','2026-10-28 07:51:20');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (47,37,6,1,'Changed from Pending to Completed','2026-10-28 08:02:05');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (48,19,6,1,'Changed from Shipped to Completed','2026-10-29 01:14:10');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (49,40,1,12,'Order placed','2026-10-29 02:28:57');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (50,40,6,1,'Changed from Pending to Completed','2026-10-29 02:29:41');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (51,41,1,13,'Order placed','2026-10-29 02:35:28');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (52,41,6,1,'Changed from Pending to Completed','2026-10-29 02:35:41');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (53,42,1,10,'Order placed','2026-10-29 02:39:51');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (54,42,7,1,'Changed from Pending to Cancelled','2026-10-29 02:40:03');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (55,43,1,14,'Order placed','2026-10-29 03:10:46');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (56,43,6,1,'Changed from Pending to Completed','2026-10-29 03:11:03');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (57,44,1,17,'Order placed','2026-10-29 03:20:02');
-INSERT INTO `order_status_history` (`history_id`, `order_id`, `order_status_id`, `changed_by`, `note`, `changed_at`) VALUES (58,44,6,1,'Changed from Pending to Completed','2026-10-29 03:20:11');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (12,1,NULL,5,'INITIAL_STOCK','DEMO-STOCK-RECEIPT-001','2026-10-01 01:00:00');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (13,21,NULL,-1,'SALE','DEMO-STOCK-SALE-002','2026-10-03 06:20:00');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (14,61,NULL,-1,'SALE','DEMO-STOCK-SALE-004','2026-10-08 09:45:00');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (15,201,NULL,-1,'SALE','DEMO-STOCK-SALE-006','2026-10-12 05:10:00');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (16,361,NULL,10,'RESTOCK','DEMO-STOCK-RECEIPT-002','2026-10-15 02:00:00');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (19,41,1,1,'RESTOCK','DEMO-SAMPLE-ORD-003','2026-10-27 19:00:19');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (20,164,16,-5,'SALE','ORD-20261027-7D6F9B','2026-10-27 19:02:49');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (21,778,16,-2,'SALE','ORD-20261027-7D6F9B','2026-10-27 19:02:49');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (22,382,16,-1,'SALE','ORD-20261027-13990B','2026-10-27 19:10:40');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (23,592,16,-1,'SALE','ORD-20261027-F81332','2026-10-27 19:10:53');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (24,203,16,-2,'SALE','ORD-20261028-4AEA62','2026-10-28 07:17:43');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (25,382,16,-1,'SALE','ORD-20261028-4AEA62','2026-10-28 07:17:43');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (26,372,16,-1,'SALE','ORD-20261028-E12A19','2026-10-28 07:28:07');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (27,8,16,-2,'SALE','ORD-20261028-C2A808','2026-10-28 07:51:20');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (28,9,16,-1,'SALE','ORD-20261028-C2A808','2026-10-28 07:51:20');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (29,384,16,-1,'SALE','ORD-20261028-C2A808','2026-10-28 07:51:20');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (30,752,1,2,'RESTOCK','Product restock','2026-10-29 02:23:20');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (31,626,12,-1,'SALE','ORD-20261029-200E41','2026-10-29 02:28:57');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (32,433,13,-1,'SALE','ORD-20261029-A56885','2026-10-29 02:35:28');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (33,772,13,-1,'SALE','ORD-20261029-A56885','2026-10-29 02:35:28');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (34,600,13,-1,'SALE','ORD-20261029-A56885','2026-10-29 02:35:28');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (35,762,10,-1,'SALE','ORD-20261029-F0F5D0','2026-10-29 02:39:51');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (36,512,10,-1,'SALE','ORD-20261029-F0F5D0','2026-10-29 02:39:51');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (37,688,10,-1,'SALE','ORD-20261029-F0F5D0','2026-10-29 02:39:51');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (38,762,1,1,'RESTOCK','ORD-20261029-F0F5D0','2026-10-29 02:40:03');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (39,512,1,1,'RESTOCK','ORD-20261029-F0F5D0','2026-10-29 02:40:03');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (40,688,1,1,'RESTOCK','ORD-20261029-F0F5D0','2026-10-29 02:40:03');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (41,362,1,3,'RESTOCK','Product restock','2026-10-29 03:01:38');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (42,752,1,2,'RESTOCK','Product restock','2026-10-29 03:08:33');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (43,573,14,-1,'SALE','ORD-20261029-9D35C7','2026-10-29 03:10:46');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (44,616,14,-1,'SALE','ORD-20261029-9D35C7','2026-10-29 03:10:46');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (45,139,17,-1,'SALE','ORD-20261029-56D7D1','2026-10-29 03:20:02');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (46,211,17,-1,'SALE','ORD-20261029-56D7D1','2026-10-29 03:20:02');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (47,379,17,-1,'SALE','ORD-20261029-56D7D1','2026-10-29 03:20:02');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (48,781,1,30,'RESTOCK','Initial variant stock','2026-10-29 03:25:59');
-INSERT INTO `inventory_transactions` (`inventory_transaction_id`, `variant_id`, `changed_by`, `quantity_change`, `reason`, `reference_text`, `created_at`) VALUES (49,782,1,20,'RESTOCK','Initial variant stock','2026-11-01 16:01:19');
 INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (8,NULL,'Packaging materials',1850.00,'2026-10-02','Boxes, mailers, tape, and labels for demo orders');
 INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (9,NULL,'Courier pickup fees',1260.00,'2026-10-06','Sample logistics expense');
 INSERT INTO `expenses` (`expense_id`, `recorded_by`, `expense_name`, `amount`, `expense_date`, `notes`) VALUES (10,NULL,'Product photography',1500.00,'2026-10-09','Catalog photo shoot expense');
@@ -1490,7 +1383,7 @@ WHERE o.address_id IS NOT NULL AND a.address_id IS NULL;
 
 -- Enforce product/variant active-state consistency and remove invalid image rows.
 UPDATE product_variants v
-JOIN products p ON p.product_id = v.product_id
+INNER JOIN products p ON p.product_id = v.product_id
 SET v.is_active = 0
 WHERE p.is_active = 0 AND v.is_active <> 0;
 
@@ -1500,7 +1393,7 @@ LEFT JOIN products p ON p.product_id = i.product_id
 WHERE p.product_id IS NULL;
 
 UPDATE product_images AS image_row
-JOIN (
+INNER JOIN (
     SELECT image_id,
            ROW_NUMBER() OVER (PARTITION BY product_id ORDER BY sort_order, image_id) - 1 AS corrected_sort_order
     FROM product_images
@@ -1510,13 +1403,13 @@ SET image_row.sort_order = ranked_images.corrected_sort_order;
 -- Keep only the newest payment per order and make its amount/status consistent.
 DELETE older
 FROM payments older
-JOIN payments newer ON newer.order_id = older.order_id
+INNER JOIN payments newer ON newer.order_id = older.order_id
     AND (newer.created_at > older.created_at
          OR (newer.created_at = older.created_at AND newer.payment_id > older.payment_id));
 
 UPDATE payments p
-JOIN orders o ON o.order_id = p.order_id
-JOIN order_statuses os ON os.order_status_id = o.order_status_id
+INNER JOIN orders o ON o.order_id = p.order_id
+INNER JOIN order_statuses os ON os.order_status_id = o.order_status_id
 SET p.amount = o.total_amount,
     p.payment_status = CASE
         WHEN os.status_name = 'Completed' THEN 'paid'
@@ -1527,13 +1420,13 @@ SET p.amount = o.total_amount,
 -- Ensure completed orders alone have one correctly-valued sale row.
 DELETE s
 FROM sales s
-JOIN orders o ON o.order_id = s.order_id
-JOIN order_statuses os ON os.order_status_id = o.order_status_id
+INNER JOIN orders o ON o.order_id = s.order_id
+INNER JOIN order_statuses os ON os.order_status_id = o.order_status_id
 WHERE os.status_name <> 'Completed';
 
 UPDATE sales s
-JOIN orders o ON o.order_id = s.order_id
-JOIN order_statuses os ON os.order_status_id = o.order_status_id
+INNER JOIN orders o ON o.order_id = s.order_id
+INNER JOIN order_statuses os ON os.order_status_id = o.order_status_id
 SET s.total_amount = o.total_amount,
     s.transaction_reference = CONCAT('TXN-', o.order_id, '-', DATE_FORMAT(s.sale_date, '%Y%m%d%H%i%s'))
 WHERE os.status_name = 'Completed'
@@ -1547,25 +1440,9 @@ SELECT o.order_id,
        o.placed_at,
        'Auto-recorded when order was marked completed'
 FROM orders o
-JOIN order_statuses os ON os.order_status_id = o.order_status_id
+INNER JOIN order_statuses os ON os.order_status_id = o.order_status_id
 LEFT JOIN sales s ON s.order_id = o.order_id
 WHERE os.status_name = 'Completed' AND s.sale_id IS NULL;
-
--- Repair history orphans and make each order's newest history status current.
-DELETE h
-FROM order_status_history h
-LEFT JOIN orders o ON o.order_id = h.order_id
-WHERE o.order_id IS NULL;
-
-UPDATE order_status_history h
-JOIN orders o ON o.order_id = h.order_id
-JOIN (
-    SELECT history_id, order_id,
-           ROW_NUMBER() OVER (PARTITION BY order_id ORDER BY changed_at DESC, history_id DESC) AS row_num
-    FROM order_status_history
-) AS latest_history ON latest_history.history_id = h.history_id AND latest_history.row_num = 1
-SET h.order_status_id = o.order_status_id
-WHERE h.order_status_id <> o.order_status_id;
 
 -- Remove reviews that are not tied to an eligible purchase and keep the newest
 -- review per user/product pair. The product-level unique key is declared above.
@@ -1582,7 +1459,7 @@ WHERE o.order_id IS NULL
 
 DELETE older
 FROM product_reviews older
-JOIN product_reviews newer ON newer.user_id = older.user_id
+INNER JOIN product_reviews newer ON newer.user_id = older.user_id
     AND newer.product_id = older.product_id
     AND (newer.created_at > older.created_at
          OR (newer.created_at = older.created_at AND newer.review_id > older.review_id));
@@ -1590,11 +1467,11 @@ JOIN product_reviews newer ON newer.user_id = older.user_id
 -- Keep cart quantities within current stock; remove carts for out-of-stock variants.
 DELETE ci
 FROM cart_items ci
-JOIN product_variants v ON v.variant_id = ci.variant_id
+INNER JOIN product_variants v ON v.variant_id = ci.variant_id
 WHERE v.stock_quantity = 0;
 
 UPDATE cart_items ci
-JOIN product_variants v ON v.variant_id = ci.variant_id
+INNER JOIN product_variants v ON v.variant_id = ci.variant_id
 SET ci.quantity = v.stock_quantity
 WHERE ci.quantity > v.stock_quantity;
 
@@ -1615,8 +1492,6 @@ ALTER TABLE orders AUTO_INCREMENT=45;
 ALTER TABLE order_items AUTO_INCREMENT=85;
 ALTER TABLE payments AUTO_INCREMENT=42;
 ALTER TABLE sales AUTO_INCREMENT=27;
-ALTER TABLE order_status_history AUTO_INCREMENT=59;
-ALTER TABLE inventory_transactions AUTO_INCREMENT=50;
 ALTER TABLE expenses AUTO_INCREMENT=21;
 ALTER TABLE product_reviews AUTO_INCREMENT=7;
 
@@ -1700,8 +1575,6 @@ UNION ALL SELECT 'orders', COUNT(*) FROM orders
 UNION ALL SELECT 'order_items', COUNT(*) FROM order_items
 UNION ALL SELECT 'payments', COUNT(*) FROM payments
 UNION ALL SELECT 'sales', COUNT(*) FROM sales
-UNION ALL SELECT 'order_status_history', COUNT(*) FROM order_status_history
-UNION ALL SELECT 'inventory_transactions', COUNT(*) FROM inventory_transactions
 UNION ALL SELECT 'expenses', COUNT(*) FROM expenses
 UNION ALL SELECT 'product_reviews', COUNT(*) FROM product_reviews;
 
@@ -1723,19 +1596,19 @@ WHERE line_total <> ROUND(unit_price * quantity, 2)
 UNION ALL
 SELECT 'sales_amount_mismatches', COUNT(*)
 FROM sales s
-JOIN orders o ON o.order_id = s.order_id
+INNER JOIN orders o ON o.order_id = s.order_id
 WHERE s.total_amount <> o.total_amount
 UNION ALL
 SELECT 'payment_amount_mismatches', COUNT(*)
 FROM payments p
-JOIN orders o ON o.order_id = p.order_id
+INNER JOIN orders o ON o.order_id = p.order_id
 WHERE p.amount <> o.total_amount
 UNION ALL
 SELECT 'sales_status_mismatches', COUNT(*)
 FROM (
     SELECT o.order_id, os.status_name, COUNT(s.sale_id) AS sale_count
     FROM orders o
-    JOIN order_statuses os ON os.order_status_id = o.order_status_id
+    INNER JOIN order_statuses os ON os.order_status_id = o.order_status_id
     LEFT JOIN sales s ON s.order_id = o.order_id
     GROUP BY o.order_id, os.status_name
     HAVING (os.status_name = 'Completed' AND COUNT(s.sale_id) <> 1)
@@ -1750,21 +1623,6 @@ FROM (
     HAVING COUNT(*) > 1
 ) duplicate_references
 UNION ALL
-SELECT 'latest_order_history_status_mismatches', COUNT(*)
-FROM orders o
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM order_status_history h
-    WHERE h.order_id = o.order_id
-)
-OR o.order_status_id <> (
-    SELECT h.order_status_id
-    FROM order_status_history h
-    WHERE h.order_id = o.order_id
-    ORDER BY h.changed_at DESC, h.history_id DESC
-    LIMIT 1
-)
-UNION ALL
 SELECT 'duplicate_reviews_per_user_product', COUNT(*)
 FROM (
     SELECT user_id, product_id
@@ -1775,8 +1633,8 @@ FROM (
 UNION ALL
 SELECT 'review_order_item_owner_product_mismatches', COUNT(*)
 FROM product_reviews r
-JOIN order_items oi ON oi.order_item_id = r.order_item_id
-JOIN orders o ON o.order_id = oi.order_id
+INNER JOIN order_items oi ON oi.order_item_id = r.order_item_id
+INNER JOIN orders o ON o.order_id = oi.order_id
 LEFT JOIN product_variants v ON v.variant_id = oi.variant_id
 WHERE r.user_id <> o.user_id
    OR v.variant_id IS NULL

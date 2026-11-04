@@ -26,6 +26,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $q = $pdo->prepare(
                 "UPDATE product_categories SET is_active=? WHERE product_category_id=?",
             );
+            
             $q->execute([0, $categoryId]);
             if ($q->rowCount() !== 1) {
                 throw new RuntimeException(

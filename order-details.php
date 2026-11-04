@@ -7,7 +7,7 @@ $s = $pdo->prepare(
     'SELECT o.*,os.status_name,a.recipient_name,a.phone,a.address_line1,a.city,a.province,a.postal_code,
         (SELECT p.amount FROM payments p WHERE p.order_id=o.order_id ORDER BY p.created_at DESC,p.payment_id DESC LIMIT 1) AS payment_amount
     FROM orders o
-    JOIN order_statuses os ON os.order_status_id=o.order_status_id
+    INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
     LEFT JOIN addresses a ON a.address_id=COALESCE(
         (SELECT a2.address_id FROM addresses a2 WHERE a2.address_id=o.address_id AND a2.user_id=o.user_id LIMIT 1),
         (SELECT a3.address_id FROM addresses a3 WHERE a3.user_id=o.user_id ORDER BY a3.is_default DESC,a3.address_id DESC LIMIT 1)

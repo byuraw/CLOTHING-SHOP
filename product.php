@@ -5,7 +5,7 @@ $id = (int) ($_GET["id"] ?? 0);
 $s = $pdo->prepare(
     'SELECT p.*,c.category_name,t.type_name
     FROM products p
-    JOIN product_categories c ON c.product_category_id=p.product_category_id
+    INNER JOIN product_categories c ON c.product_category_id=p.product_category_id
     LEFT JOIN product_types t ON t.product_type_id=p.product_type_id
     WHERE p.product_id=? AND p.is_active=1 AND c.is_active=1',
 );
@@ -63,8 +63,8 @@ if ($reviewPost) {
         $can = $pdo->prepare(
             "SELECT oi.order_item_id
             FROM order_items oi
-            JOIN orders o ON o.order_id=oi.order_id
-            JOIN order_statuses os ON os.order_status_id=o.order_status_id
+            INNER JOIN orders o ON o.order_id=oi.order_id
+            INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
             WHERE o.user_id=?
                 AND oi.variant_id IN (
                     SELECT variant_id FROM product_variants WHERE product_id=?
@@ -130,7 +130,7 @@ $formReviewText = $reviewPost
 $reviews = $pdo->prepare(
     'SELECT pr.rating,pr.review_text,pr.created_at,pr.updated_at,u.first_name,u.last_name
     FROM product_reviews pr
-    JOIN users u ON u.user_id=pr.user_id
+    INNER JOIN users u ON u.user_id=pr.user_id
     WHERE pr.product_id=?
     ORDER BY pr.created_at DESC',
 );

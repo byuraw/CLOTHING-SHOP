@@ -12,7 +12,7 @@ $args = [$from, $to];
 $q = $pdo->prepare(
     "SELECT COUNT(*) orders_count,COALESCE(SUM(o.subtotal),0) sales
     FROM sales s
-    JOIN orders o ON o.order_id=s.order_id
+    INNER JOIN orders o ON o.order_id=s.order_id
     WHERE s.sale_date >= ?
       AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)",
 );
@@ -36,8 +36,8 @@ $transactionQuery = $pdo->prepare(
             LIMIT 1
         ) AS payment_amount
     FROM sales s
-    JOIN orders o ON o.order_id = s.order_id
-    JOIN users u ON u.user_id = o.user_id
+    INNER JOIN orders o ON o.order_id = s.order_id
+    INNER JOIN users u ON u.user_id = o.user_id
     LEFT JOIN (
         SELECT order_id, COUNT(*) AS item_count, SUM(quantity) AS total_quantity
         FROM order_items
@@ -68,7 +68,7 @@ $expenses = (float) $q->fetchColumn();
 $q = $pdo->prepare(
     "SELECT oi.product_name_snapshot,SUM(oi.quantity) units
     FROM sales s
-    JOIN order_items oi ON oi.order_id=s.order_id
+    INNER JOIN order_items oi ON oi.order_id=s.order_id
     WHERE s.sale_date >= ?
       AND s.sale_date < DATE_ADD(?, INTERVAL 1 DAY)
     GROUP BY oi.product_name_snapshot
@@ -78,7 +78,7 @@ $q = $pdo->prepare(
 $q->execute($args);
 $best = $q->fetchAll();
 $q = $pdo->prepare(
-    "SELECT p.product_name,v.sku,v.stock_quantity FROM product_variants v JOIN products p ON p.product_id=v.product_id WHERE v.stock_quantity<=5 ORDER BY v.stock_quantity,p.product_name",
+    "SELECT p.product_name,v.sku,v.stock_quantity FROM product_variants v INNER JOIN products p ON p.product_id=v.product_id WHERE v.stock_quantity<=5 ORDER BY v.stock_quantity,p.product_name",
 );
 $q->execute();
 $low = $q->fetchAll();

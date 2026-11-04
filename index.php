@@ -22,7 +22,7 @@ $base = "
             WHERE r.product_id = p.product_id
         ) AS rating
     FROM products p
-    JOIN product_categories c ON c.product_category_id = p.product_category_id
+    INNER JOIN product_categories c ON c.product_category_id = p.product_category_id
     INNER JOIN (
         SELECT product_id, MIN(price) AS min_price, MAX(price) AS max_price
         FROM product_variants

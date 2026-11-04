@@ -51,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 }
 $users = $pdo
     ->query(
-        "SELECT u.user_id,u.first_name,u.last_name,u.email,u.created_at,u.status_id,u.role_name,s.status_name FROM users u JOIN account_statuses s ON s.status_id=u.status_id ORDER BY u.created_at DESC",
+        "SELECT u.user_id,u.first_name,u.last_name,u.email,u.created_at,u.status_id,u.role_name,s.status_name FROM users u INNER JOIN account_statuses s ON s.status_id=u.status_id ORDER BY u.created_at DESC",
     )
     ->fetchAll();
 $roles = ["Admin", "Customer"];

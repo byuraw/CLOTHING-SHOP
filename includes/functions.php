@@ -93,7 +93,7 @@ function require_login(): void
     $account = $pdo->prepare(
         "SELECT s.status_name,u.role_name
         FROM users u
-        JOIN account_statuses s ON s.status_id=u.status_id
+        INNER JOIN account_statuses s ON s.status_id=u.status_id
         WHERE u.user_id=?",
     );
     $account->execute([current_user()["id"]]);
@@ -183,20 +183,6 @@ function moderate_review(string $text): string
     ) ?? $text;
 }
 
-function log_inventory(
-    PDO $pdo,
-    int $variantId,
-    ?int $userId,
-    int $qty,
-    string $reason,
-    ?string $ref,
-): void {
-    $statement = $pdo->prepare(
-        "INSERT INTO inventory_transactions(variant_id,changed_by,quantity_change,reason,reference_text) VALUES(?,?,?,?,?)",
-    );
-    $statement->execute([$variantId, $userId, $qty, $reason, $ref]);
-}
-
 function restock_expense_amount(string $basePrice, int $quantity): string
 {
     if (
@@ -232,19 +218,6 @@ function restock_expense_amount(string $basePrice, int $quantity): string
             "0",
             STR_PAD_LEFT,
         );
-}
-
-function log_order_status(
-    PDO $pdo,
-    int $orderId,
-    int $statusId,
-    ?int $userId,
-    ?string $note,
-): void {
-    $statement = $pdo->prepare(
-        "INSERT INTO order_status_history(order_id,order_status_id,changed_by,note) VALUES(?,?,?,?)",
-    );
-    $statement->execute([$orderId, $statusId, $userId, $note]);
 }
 
 function clothing_sku(

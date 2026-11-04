@@ -90,8 +90,7 @@ customer's order note; `order_items.sku_snapshot` preserves the purchased SKU;
 `sales.notes` records sale context; `products.slug` is used for product URLs;
 `product_categories.description` is category content; `addresses.is_default`
 selects a preferred address; and `orders.updated_at` is maintained by the PHP
-order-status update. All columns in `order_status_history` and
-`inventory_transactions` remain as intentional audit data.
+order-status update. The two unused, write-only audit tables have been removed.
 
 No PHP files were changed. The dropped columns have no PHP references.
 PHP-dependent or intentional fields listed above were not removed or changed.

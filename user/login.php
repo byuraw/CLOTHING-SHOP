@@ -25,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $q = $pdo->prepare(
             'SELECT u.user_id,u.first_name,u.last_name,u.email,u.password_hash,u.role_name,s.status_name
             FROM users u 
-            JOIN account_statuses s ON s.status_id=u.status_id 
+            INNER JOIN account_statuses s ON s.status_id=u.status_id 
             WHERE u.email=?',
         );
         $q->execute([$identifier]);

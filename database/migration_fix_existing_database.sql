@@ -23,12 +23,12 @@ WHERE line_total <> ROUND(unit_price * quantity, 2)
 UNION ALL
 SELECT 'before_sales_amount_vs_subtotal', COUNT(*)
 FROM sales s
-JOIN orders o ON o.order_id = s.order_id
+INNER JOIN orders o ON o.order_id = s.order_id
 WHERE s.total_amount <> o.subtotal
 UNION ALL
 SELECT 'before_payment_amount_vs_subtotal', COUNT(*)
 FROM payments p
-JOIN orders o ON o.order_id = p.order_id
+INNER JOIN orders o ON o.order_id = p.order_id
 WHERE p.amount <> o.subtotal;
 
 -- Reconcile line items first, then use those line items as the source of truth.
@@ -48,12 +48,12 @@ WHERE o.subtotal <> COALESCE(item_totals.corrected_subtotal, 0)
    OR o.total_amount <> COALESCE(item_totals.corrected_subtotal, 0);
 
 UPDATE sales s
-JOIN orders o ON o.order_id = s.order_id
+INNER JOIN orders o ON o.order_id = s.order_id
 SET s.total_amount = o.total_amount
 WHERE s.total_amount <> o.total_amount;
 
 UPDATE payments p
-JOIN orders o ON o.order_id = p.order_id
+INNER JOIN orders o ON o.order_id = p.order_id
 SET p.amount = o.total_amount
 WHERE p.amount <> o.total_amount;
 
@@ -215,9 +215,9 @@ SELECT
     o.subtotal,
     o.total_amount
 FROM orders o
-JOIN users u ON u.user_id=o.user_id
-JOIN order_statuses os ON os.order_status_id=o.order_status_id
-JOIN order_items oi ON oi.order_id=o.order_id;
+INNER JOIN users u ON u.user_id=o.user_id
+INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
+INNER JOIN order_items oi ON oi.order_id=o.order_id;
 
 -- Recreate the canonical triggers after data reconciliation.
 DROP TRIGGER IF EXISTS trg_orders_insert_completed_sale;
@@ -320,19 +320,19 @@ WHERE line_total <> ROUND(unit_price * quantity, 2)
 UNION ALL
 SELECT 'after_sales_amount_mismatches', COUNT(*)
 FROM sales s
-JOIN orders o ON o.order_id = s.order_id
+INNER JOIN orders o ON o.order_id = s.order_id
 WHERE s.total_amount <> o.total_amount
 UNION ALL
 SELECT 'after_payment_amount_mismatches', COUNT(*)
 FROM payments p
-JOIN orders o ON o.order_id = p.order_id
+INNER JOIN orders o ON o.order_id = p.order_id
 WHERE p.amount <> o.total_amount;
 
 SELECT 'after_sales_status_mismatches' AS check_name, COUNT(*) AS mismatch_count
 FROM (
     SELECT o.order_id, os.status_name, COUNT(s.sale_id) AS sale_count
     FROM orders o
-    JOIN order_statuses os ON os.order_status_id = o.order_status_id
+    INNER JOIN order_statuses os ON os.order_status_id = o.order_status_id
     LEFT JOIN sales s ON s.order_id = o.order_id
     GROUP BY o.order_id, os.status_name
     HAVING (os.status_name = 'Completed' AND COUNT(s.sale_id) <> 1)
@@ -347,21 +347,6 @@ FROM (
     HAVING COUNT(*) > 1
 ) duplicate_references
 UNION ALL
-SELECT 'after_latest_order_history_status_mismatches', COUNT(*)
-FROM orders o
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM order_status_history h
-    WHERE h.order_id = o.order_id
-)
-OR o.order_status_id <> (
-    SELECT h.order_status_id
-    FROM order_status_history h
-    WHERE h.order_id = o.order_id
-    ORDER BY h.changed_at DESC, h.history_id DESC
-    LIMIT 1
-)
-UNION ALL
 SELECT 'after_duplicate_reviews_per_user_product', COUNT(*)
 FROM (
     SELECT user_id, product_id
@@ -372,8 +357,8 @@ FROM (
 UNION ALL
 SELECT 'after_review_order_item_owner_product_mismatches', COUNT(*)
 FROM product_reviews r
-JOIN order_items oi ON oi.order_item_id = r.order_item_id
-JOIN orders o ON o.order_id = oi.order_id
+INNER JOIN order_items oi ON oi.order_item_id = r.order_item_id
+INNER JOIN orders o ON o.order_id = oi.order_id
 LEFT JOIN product_variants v ON v.variant_id = oi.variant_id
 WHERE r.user_id <> o.user_id
    OR v.variant_id IS NULL

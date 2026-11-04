@@ -8,7 +8,7 @@ $newOrders = (int) $pdo
     ->query(
         "SELECT COUNT(*)
         FROM orders o
-        JOIN order_statuses s ON s.order_status_id=o.order_status_id
+        INNER JOIN order_statuses s ON s.order_status_id=o.order_status_id
         WHERE s.status_name='Pending'",
     )
     ->fetchColumn();
@@ -28,7 +28,7 @@ $from = $firstMonth->modify("-6 months")->format("Y-m-01");
 $salesQuery = $pdo->prepare(
     "SELECT s.sale_date AS placed_at,o.subtotal AS total_amount
     FROM sales s
-    JOIN orders o ON o.order_id=s.order_id
+    INNER JOIN orders o ON o.order_id=s.order_id
     WHERE s.sale_date>=?",
 );
 $salesQuery->execute([$from . " 00:00:00"]);
@@ -71,7 +71,7 @@ $lowStock = $pdo
     ->query(
         'SELECT p.product_name,pv.stock_quantity,sz.size_name,co.color_name
         FROM product_variants pv
-        JOIN products p ON p.product_id=pv.product_id
+        INNER JOIN products p ON p.product_id=pv.product_id
         LEFT JOIN sizes sz ON sz.size_id=pv.size_id
         LEFT JOIN colors co ON co.color_id=pv.color_id
         WHERE pv.is_active=1 AND p.is_active=1 AND pv.stock_quantity<=5
@@ -83,8 +83,8 @@ $recentOrders = $pdo
     ->query(
         'SELECT o.order_number,o.subtotal AS total_amount,os.status_name,u.first_name,u.last_name
         FROM orders o
-        JOIN order_statuses os ON os.order_status_id=o.order_status_id
-        JOIN users u ON u.user_id=o.user_id
+        INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
+        INNER JOIN users u ON u.user_id=o.user_id
         ORDER BY o.placed_at DESC
         LIMIT 6',
     )

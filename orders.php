@@ -5,7 +5,7 @@ require_login();
 $s = $pdo->prepare(
     'SELECT o.order_id,o.order_number,o.subtotal AS total_amount,o.placed_at,os.status_name
     FROM orders o
-    JOIN order_statuses os ON os.order_status_id=o.order_status_id
+    INNER JOIN order_statuses os ON os.order_status_id=o.order_status_id
     WHERE o.user_id=?
     ORDER BY o.placed_at DESC',
 );

@@ -190,16 +190,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     number_format($variantPrice, 2, ".", ""),
                     $stock,
                 ]);
-                $variantId = (int) $pdo->lastInsertId();
                 if ($stock > 0) {
-                    log_inventory(
-                        $pdo,
-                        $variantId,
-                        (int) current_user()["id"],
-                        $stock,
-                        "RESTOCK",
-                        "Initial variant stock",
-                    );
                     $expenseAmount = restock_expense_amount(
                         number_format($variantPrice, 2, ".", ""),
                         $stock,
@@ -330,7 +321,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $catalogInfo = $pdo->prepare(
                 'SELECT category_name,type_name
                 FROM product_categories
-                JOIN product_types ON product_type_id=?
+                INNER JOIN product_types ON product_type_id=?
                 WHERE product_category_id=? AND is_active=1',
             );
             $catalogInfo->execute([$typeId, $categoryId]);
@@ -412,7 +403,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 );
             }
             $product = $pdo->prepare(
-                "SELECT p.product_name,pc.category_name,pt.type_name FROM products p JOIN product_categories pc ON pc.product_category_id=p.product_category_id JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1",
+                "SELECT p.product_name,pc.category_name,pt.type_name FROM products p INNER JOIN product_categories pc ON pc.product_category_id=p.product_category_id INNER JOIN product_types pt ON pt.product_type_id=p.product_type_id WHERE p.product_id=? AND p.is_active=1",
             );
             $product->execute([$pid]);
             $product = $product->fetch();
@@ -472,17 +463,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 number_format($price, 2, ".", ""),
                 $stock,
             ]);
-            $variantId = (int) $pdo->lastInsertId();
-            if ($stock > 0) {
-                log_inventory(
-                    $pdo,
-                    $variantId,
-                    (int) current_user()["id"],
-                    $stock,
-                    "RESTOCK",
-                    "Initial variant stock",
-                );
-            }
             flash("Variant created.");
         } elseif ($action === "restock") {
             $variantId = filter_var(
@@ -509,7 +489,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $variantQuery = $pdo->prepare(
                     "SELECT v.stock_quantity,v.price,p.product_name
                     FROM product_variants v
-                    JOIN products p ON p.product_id=v.product_id
+                    INNER JOIN products p ON p.product_id=v.product_id
                     WHERE v.variant_id=? AND v.is_active=1 AND p.is_active=1
                     FOR UPDATE",
                 );
@@ -536,14 +516,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     "UPDATE product_variants SET stock_quantity=stock_quantity+? WHERE variant_id=?",
                 );
                 $saveStock->execute([$quantity, $variantId]);
-                log_inventory(
-                    $pdo,
-                    $variantId,
-                    (int) current_user()["id"],
-                    $quantity,
-                    "RESTOCK",
-                    "Product restock",
-                );
                 $expense = $pdo->prepare(
                     "INSERT INTO expenses(recorded_by,expense_name,amount,expense_date,notes) VALUES(?,?,?,?,?)",
                 );
@@ -737,9 +709,9 @@ foreach (
 $restockQuery = $pdo->prepare(
     'SELECT v.variant_id,v.sku,v.stock_quantity,p.product_name,pc.category_name,pt.type_name,s.size_name,c.color_name
     FROM product_variants v
-    JOIN products p ON p.product_id=v.product_id
-    JOIN product_categories pc ON pc.product_category_id=p.product_category_id
-    JOIN product_types pt ON pt.product_type_id=p.product_type_id
+    INNER JOIN products p ON p.product_id=v.product_id
+    INNER JOIN product_categories pc ON pc.product_category_id=p.product_category_id
+    INNER JOIN product_types pt ON pt.product_type_id=p.product_type_id
     LEFT JOIN sizes s ON s.size_id=v.size_id
     LEFT JOIN colors c ON c.color_id=v.color_id
     WHERE ' .
@@ -756,8 +728,8 @@ $list = $pdo
             pc.category_name,pt.type_name,
             (SELECT COUNT(*) FROM product_variants v WHERE v.product_id=p.product_id AND v.is_active=1) variants
         FROM products p
-        JOIN product_categories pc ON pc.product_category_id=p.product_category_id
-        JOIN product_types pt ON pt.product_type_id=p.product_type_id
+        INNER JOIN product_categories pc ON pc.product_category_id=p.product_category_id
+        INNER JOIN product_types pt ON pt.product_type_id=p.product_type_id
         WHERE p.is_active=1
         ORDER BY p.created_at DESC",
     )
@@ -778,8 +750,8 @@ $deleteList = $pdo
             COALESCE(s.size_name,'One size') size_name,
             COALESCE(c.color_name,'Default') color_name
         FROM products p
-        JOIN product_categories pc ON pc.product_category_id=p.product_category_id
-        JOIN product_types pt ON pt.product_type_id=p.product_type_id
+        INNER JOIN product_categories pc ON pc.product_category_id=p.product_category_id
+        INNER JOIN product_types pt ON pt.product_type_id=p.product_type_id
         LEFT JOIN product_variants v ON v.product_id=p.product_id AND v.is_active=1
         LEFT JOIN sizes s ON s.size_id=v.size_id
         LEFT JOIN colors c ON c.color_id=v.color_id
