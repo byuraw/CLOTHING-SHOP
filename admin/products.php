@@ -161,7 +161,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $uploadedPaths = [];
             try {
                 $q = $pdo->prepare(
-                    "INSERT INTO products(product_category_id,product_type_id,product_name,slug,description,is_active) VALUES(?,?,?,?,?,1)",
+                    "INSERT INTO products(product_category_id,product_type_id,product_name,slug,description,is_active) 
+                    VALUES(?,?,?,?,?,1)",
                 );
                 $q->execute([
                     $categoryId,
