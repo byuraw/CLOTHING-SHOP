@@ -261,6 +261,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             if ($pid === false || $pid < 1) {
                 throw new RuntimeException("Choose a valid product.");
             }
+            $deletedImagePaths = [];
             $pdo->beginTransaction();
             try {
                 $product = $pdo->prepare(
@@ -270,12 +271,23 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 if (!$product->fetchColumn()) {
                     throw new RuntimeException("Choose an active product.");
                 }
+                $images = $pdo->prepare(
+                    "SELECT image_path FROM product_images WHERE product_id=?",
+                );
+                $images->execute([$pid]);
+                $deletedImagePaths = $images->fetchAll(PDO::FETCH_COLUMN);
                 $pdo->prepare(
-                    "UPDATE products SET is_active=0 WHERE product_id=?",
+                    "DELETE ci FROM cart_items ci
+                    INNER JOIN product_variants pv ON pv.variant_id=ci.variant_id
+                    WHERE pv.product_id=?",
                 )->execute([$pid]);
-                $pdo->prepare(
-                    "UPDATE product_variants SET is_active=0 WHERE product_id=?",
-                )->execute([$pid]);
+                $deleteProduct = $pdo->prepare(
+                    "DELETE FROM products WHERE product_id=?",
+                );
+                $deleteProduct->execute([$pid]);
+                if ($deleteProduct->rowCount() !== 1) {
+                    throw new RuntimeException("Product could not be deleted.");
+                }
                 $pdo->commit();
             } catch (Throwable $e) {
                 if ($pdo->inTransaction()) {
@@ -283,7 +295,64 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 }
                 throw $e;
             }
-            flash("Product deleted successfully and removed from the store.");
+            $imageCleanupFailed = false;
+            $photoDirectory = realpath(__DIR__ . "/../uploads/products");
+            foreach ($deletedImagePaths as $imagePath) {
+                $storedImagePath = str_replace("\\", "/", (string) $imagePath);
+                $imageFilename = basename($storedImagePath);
+                if (
+                    $storedImagePath !== "uploads/products/" . $imageFilename ||
+                    $photoDirectory === false
+                ) {
+                    $imageCleanupFailed = true;
+                    error_log(
+                        "Could not safely remove deleted product image: " .
+                            $storedImagePath,
+                    );
+                    continue;
+                }
+                $photoFile = realpath(
+                    $photoDirectory .
+                        DIRECTORY_SEPARATOR .
+                        $imageFilename,
+                );
+                if ($photoFile === false || !is_file($photoFile)) {
+                    continue;
+                }
+                $photoDirectoryPrefix =
+                    rtrim($photoDirectory, DIRECTORY_SEPARATOR) .
+                    DIRECTORY_SEPARATOR;
+                if (
+                    strncasecmp(
+                        $photoFile,
+                        $photoDirectoryPrefix,
+                        strlen($photoDirectoryPrefix),
+                    ) !== 0
+                ) {
+                    $imageCleanupFailed = true;
+                    error_log(
+                        "Deleted product image resolved outside its upload folder: " .
+                            $photoFile,
+                    );
+                    continue;
+                }
+                $stillUsed = $pdo->prepare(
+                    "SELECT 1 FROM product_images WHERE image_path=? LIMIT 1",
+                );
+                $stillUsed->execute([$imagePath]);
+                if (!$stillUsed->fetchColumn() && !unlink($photoFile)) {
+                    $imageCleanupFailed = true;
+                    error_log(
+                        "Could not remove deleted product image: " . $photoFile,
+                    );
+                }
+            }
+            flash(
+                $imageCleanupFailed
+                    ? "Product deleted, but one or more image files could not be removed."
+                    : "Product and its unused images deleted successfully. Order history is retained.",
+                $imageCleanupFailed ? "error" : "success",
+            );
             redirect(
                 APP_BASE . "/admin/products.php#delete-product-panel",
             );
@@ -1123,7 +1192,7 @@ require __DIR__ . "/../includes/admin_header.php";
             <td><?= e($p["color_name"]) ?></td>
             <td><?= $p["variant_price"] !== null ? "₱" . number_format((float) $p["variant_price"], 2) : "—" ?></td>
             <td>
-              <form method="post" novalidate data-preserve-scroll onsubmit="return confirm('Are you sure you want to delete this product? It will no longer be available for purchase.');">
+              <form method="post" novalidate data-preserve-scroll onsubmit="return confirm('Permanently delete this product? Its variants, reviews, and cart items will be removed. Existing order history will be retained.');">
                 <input type="hidden" name="csrf" value="<?= e(csrf_token()) ?>">
                 <input type="hidden" name="action" value="delete">
                 <input type="hidden" name="product_id" value="<?= (int) $p["product_id"] ?>">
